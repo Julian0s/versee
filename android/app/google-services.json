@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "54784920826",
+    "firebase_url": "https://egxse64845cgaarz90nllkn1o0c1aw-default-rtdb.firebaseio.com",
+    "project_id": "egxse64845cgaarz90nllkn1o0c1aw",
+    "storage_bucket": "egxse64845cgaarz90nllkn1o0c1aw.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:54784920826:android:b5414ae3032ea7ff364d43",
+        "android_client_info": {
+          "package_name": "com.versee.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRCrtNDZyAh1cxjlM4I5viYOQXUpRa3Jc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

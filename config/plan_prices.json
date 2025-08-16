@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-08-10",
+  "currency_info": {
+    "JPY": {
+      "name": "Japanese Yen",
+      "symbol": "¥",
+      "country": "Japan"
+    },
+    "USD": {
+      "name": "US Dollar",
+      "symbol": "$",
+      "country": "United States"
+    },
+    "BRL": {
+      "name": "Brazilian Real",
+      "symbol": "R$",
+      "country": "Brazil"
+    },
+    "EUR": {
+      "name": "Euro",
+      "symbol": "€",
+      "country": "Europe"
+    }
+  },
+  "monthly_prices": {
+    "starter": {
+      "JPY": 0,
+      "USD": 0,
+      "BRL": 0,
+      "EUR": 0
+    },
+    "standard": {
+      "JPY": 1980,
+      "USD": 14.90,
+      "BRL": 34.90,
+      "EUR": 12.90
+    },
+    "advanced": {
+      "JPY": 3980,
+      "USD": 29.90,
+      "BRL": 64.90,
+      "EUR": 24.90
+    }
+  }
+}

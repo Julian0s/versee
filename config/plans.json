@@ -1,0 +1,93 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-08-10",
+  "plans": {
+    "starter": {
+      "id": "starter",
+      "name": "Starter",
+      "description": "Plano básico para começar",
+      "maxStorageBytes": 104857600,
+      "maxFiles": 10,
+      "maxActivePlaylists": 1,
+      "maxPlaylistItems": 10,
+      "slidesPerItemLimit": 2,
+      "bibleAllVersions": true,
+      "notesLimit": 5,
+      "songsLimit": 5,
+      "features": {
+        "watermark": true,
+        "twoScreens": false,
+        "remoteControlBasic": false,
+        "remoteControlAdvanced": false,
+        "previewLive": false,
+        "transitions": false,
+        "automationPlaylists": false,
+        "savePlaylists": false,
+        "layoutsCustom": false,
+        "mediaInSlides": false,
+        "convertMediaCompat": false,
+        "backupCloud": false,
+        "trainingIncluded": false,
+        "supportSLA": "none"
+      }
+    },
+    "standard": {
+      "id": "standard",
+      "name": "Standard",
+      "description": "Plano intermediário com recursos avançados",
+      "maxStorageBytes": 5368709120,
+      "maxFiles": 200,
+      "maxActivePlaylists": null,
+      "maxPlaylistItems": null,
+      "slidesPerItemLimit": 10,
+      "bibleAllVersions": true,
+      "notesLimit": null,
+      "songsLimit": null,
+      "features": {
+        "watermark": false,
+        "twoScreens": true,
+        "remoteControlBasic": true,
+        "remoteControlAdvanced": false,
+        "previewLive": false,
+        "transitions": false,
+        "automationPlaylists": false,
+        "savePlaylists": true,
+        "layoutsCustom": false,
+        "mediaInSlides": false,
+        "convertMediaCompat": false,
+        "backupCloud": false,
+        "trainingIncluded": false,
+        "supportSLA": "48h"
+      }
+    },
+    "advanced": {
+      "id": "advanced",
+      "name": "Advanced",
+      "description": "Plano completo com todos os recursos premium",
+      "maxStorageBytes": 53687091200,
+      "maxFiles": null,
+      "maxActivePlaylists": null,
+      "maxPlaylistItems": null,
+      "slidesPerItemLimit": null,
+      "bibleAllVersions": true,
+      "notesLimit": null,
+      "songsLimit": null,
+      "features": {
+        "watermark": false,
+        "twoScreens": true,
+        "remoteControlBasic": true,
+        "remoteControlAdvanced": true,
+        "previewLive": true,
+        "transitions": true,
+        "automationPlaylists": true,
+        "savePlaylists": true,
+        "layoutsCustom": true,
+        "mediaInSlides": true,
+        "convertMediaCompat": true,
+        "backupCloud": true,
+        "trainingIncluded": true,
+        "supportSLA": "24h"
+      }
+    }
+  }
+}

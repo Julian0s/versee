@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>54784920826-abc123def456ghi789jkl012mno345.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.54784920826-abc123def456ghi789jkl012mno345</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBMN7pQ9rS6tU8vW2x3Y4z5A6b7C8d9E0f</string>
+	<key>GCM_SENDER_ID</key>
+	<string>54784920826</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.versee.app</string>
+	<key>PROJECT_ID</key>
+	<string>egxse64845cgaarz90nllkn1o0c1aw</string>
+	<key>STORAGE_BUCKET</key>
+	<string>egxse64845cgaarz90nllkn1o0c1aw.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:54784920826:ios:1a2b3c4d5e6f7890364d43</string>
+	<key>DATABASE_URL</key>
+	<string>https://egxse64845cgaarz90nllkn1o0c1aw-default-rtdb.firebaseio.com</string>
+</dict>
+</plist>

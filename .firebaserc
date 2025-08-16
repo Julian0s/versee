@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "egxse64845cgaarz90nllkn1o0c1aw"
+  },
+  "targets": {
+    "versee-sl3qi": {
+      "hosting": {
+        "versee-app": [
+          "versee-app"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
