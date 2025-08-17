@@ -172,6 +172,14 @@ class _MediaPlayerWidgetState extends State<MediaPlayerWidget> {
       }
 
       await _videoController!.initialize();
+      
+      // Pré-buffer para reduzir latência
+      await _videoController!.setVolume(0);
+      await _videoController!.play();
+      await Future.delayed(const Duration(milliseconds: 100));
+      await _videoController!.pause();
+      await _videoController!.seekTo(Duration.zero);
+      await _videoController!.setVolume(1.0);
 
       _chewieController = ChewieController(
         videoPlayerController: _videoController!,
@@ -228,6 +236,13 @@ class _MediaPlayerWidgetState extends State<MediaPlayerWidget> {
   Future<void> _initializeAudio() async {
     try {
       _audioPlayer = AudioPlayer();
+      
+      // Configurar para latência mínima
+      await _audioPlayer!.setReleaseMode(ReleaseMode.stop);
+      await _audioPlayer!.setPlayerMode(PlayerMode.lowLatency);
+      
+      // Volume inicial
+      await _audioPlayer!.setVolume(_volume);
 
       // Configurar listeners
       _audioPlayer!.onDurationChanged.listen((duration) {
@@ -291,7 +306,15 @@ class _MediaPlayerWidgetState extends State<MediaPlayerWidget> {
         if (kIsWeb) {
           await _initializeWebAudio(normalizedUrl);
         } else {
+          // Pré-carregar o áudio para reduzir latência
           await _audioPlayer!.setSourceUrl(normalizedUrl);
+          // Pré-buffer para início instantâneo
+          await _audioPlayer!.setVolume(0);
+          await _audioPlayer!.resume();
+          await Future.delayed(const Duration(milliseconds: 50));
+          await _audioPlayer!.pause();
+          await _audioPlayer!.seek(Duration.zero);
+          await _audioPlayer!.setVolume(_volume);
         }
         
       } else {
@@ -299,6 +322,13 @@ class _MediaPlayerWidgetState extends State<MediaPlayerWidget> {
         final file = File(sourcePath);
         if (await file.exists()) {
           await _audioPlayer!.setSourceDeviceFile(sourcePath);
+          // Pré-buffer para início instantâneo
+          await _audioPlayer!.setVolume(0);
+          await _audioPlayer!.resume();
+          await Future.delayed(const Duration(milliseconds: 50));
+          await _audioPlayer!.pause();
+          await _audioPlayer!.seek(Duration.zero);
+          await _audioPlayer!.setVolume(_volume);
         } else {
           throw Exception('Arquivo de áudio não encontrado: $sourcePath');
         }

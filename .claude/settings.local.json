@@ -67,7 +67,26 @@
       "Bash(adb -s emulator-5554 install -r build/app/outputs/flutter-apk/app-debug.apk)",
       "Bash(set JAVA_HOME=\"C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.8.9-hotspot\")",
       "Bash(dir C:Usersalexa.androiddebug.keystore)",
-      "Bash(\"C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.8.9-hotspot\\bin\\keytool\" -list -v -alias androiddebugkey -keystore ~/.android/debug.keystore -storepass android)"
+      "Bash(\"C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.8.9-hotspot\\bin\\keytool\" -list -v -alias androiddebugkey -keystore ~/.android/debug.keystore -storepass android)",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" logcat -c)",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" logcat flutter:* *:S)",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" logcat flutter:I *:S)",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s emulator-5554 install -r build/app/outputs/flutter-apk/app-debug.apk)",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" devices)",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s PN6L8TTCAU7HAQBQ install -r build/app/outputs/flutter-apk/app-debug.apk)",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s PN6L8TTCAU7HAQBQ shell pm uninstall com.alexandrelz.versee)",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s PN6L8TTCAU7HAQBQ install build/app/outputs/flutter-apk/app-debug.apk)",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s PN6L8TTCAU7HAQBQ install \"build/app/outputs/flutter-apk/app-debug.apk\")",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s PN6L8TTCAU7HAQBQ shell pm list packages)",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s PN6L8TTCAU7HAQBQ install -r \"build\\app\\outputs\\flutter-apk\\app-debug.apk\")",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s PN6L8TTCAU7HAQBQ install \"build\\app\\outputs\\flutter-apk\\app-debug.apk\")",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s emulator-5554 install \"build\\app\\outputs\\flutter-apk\\app-debug.apk\")",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s emulator-5554 logcat -c)",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s emulator-5554 logcat flutter:I *:S)",
+      "Bash(xcopy:*)",
+      "Bash(robocopy:*)",
+      "Bash(powershell:*)",
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s PN6L8TTCAU7HAQBQ install -r \"build\\app\\outputs\\flutter-apk\\app-release.apk\")"
     ],
     "deny": []
   }

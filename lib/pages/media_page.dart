@@ -152,8 +152,6 @@ class _MediaPageState extends State<MediaPage> with TickerProviderStateMixin {
         mediaType = MediaContentType.audio;
     }
     
-    // Find the current tab's state to call its method
-    // Since this is a simplified approach, we'll navigate to a generic media import
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -168,7 +166,7 @@ class _MediaPageState extends State<MediaPage> with TickerProviderStateMixin {
                 subtitle: Text('Importar ${_getMediaTypeName(mediaType).toLowerCase()} do dispositivo'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  // This would need to be implemented or delegated to the tab content
+                  _importMediaFiles(context, mediaType);
                 },
               ),
             ],
@@ -192,6 +190,121 @@ class _MediaPageState extends State<MediaPage> with TickerProviderStateMixin {
         return 'Vídeo';
       case MediaContentType.image:
         return 'Imagem';
+    }
+  }
+
+  /// Importar arquivos de mídia com feedback visual completo
+  Future<void> _importMediaFiles(BuildContext context, MediaContentType mediaType) async {
+    debugPrint('🚀 Iniciando importação de ${mediaType.name}...');
+    
+    try {
+      // Mostrar dialog de loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text('Selecionando arquivos de ${_getMediaTypeName(mediaType).toLowerCase()}...'),
+                const SizedBox(height: 8),
+                const Text(
+                  'Por favor, aguarde...',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      final mediaService = Provider.of<MediaService>(context, listen: false);
+      List<MediaItem> importedItems = [];
+
+      switch (mediaType) {
+        case MediaContentType.audio:
+          importedItems = await mediaService.importAudioFiles().timeout(
+                const Duration(minutes: 3),
+                onTimeout: () => throw Exception(
+                  'O processamento dos arquivos de áudio demorou mais que o esperado',
+                ),
+              );
+          break;
+        case MediaContentType.video:
+          importedItems = await mediaService.importVideoFiles().timeout(
+                const Duration(minutes: 5),
+                onTimeout: () => throw Exception(
+                  'O processamento dos arquivos de vídeo demorou mais que o esperado',
+                ),
+              );
+          break;
+        case MediaContentType.image:
+          importedItems = await mediaService.importImageFiles().timeout(
+                const Duration(minutes: 2),
+                onTimeout: () => throw Exception(
+                  'O processamento das imagens demorou mais que o esperado',
+                ),
+              );
+          break;
+      }
+
+      if (context.mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        
+        // Mostrar resultado
+        if (importedItems.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '✅ ${importedItems.length} arquivo(s) de ${_getMediaTypeName(mediaType).toLowerCase()} importado(s) com sucesso!',
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          debugPrint('✅ Importação bem-sucedida: ${importedItems.length} arquivos');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('ℹ️ Nenhum arquivo foi selecionado ou processado.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          debugPrint('ℹ️ Nenhum arquivo foi importado');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erro na importação: $e');
+      
+      if (context.mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        
+        String errorMessage = 'Erro ao importar arquivos';
+        if (e.toString().contains('Permission')) {
+          errorMessage = 'Permissão negada. Verifique as permissões do aplicativo nas configurações do dispositivo.';
+        } else if (e.toString().contains('timeout') || e.toString().contains('esperado')) {
+          errorMessage = 'Operação demorou muito. Tente arquivos menores ou verifique sua conexão.';
+        } else if (e.toString().contains('Nenhum arquivo selecionado')) {
+          errorMessage = 'Nenhum arquivo foi selecionado.';
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ $errorMessage'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Tentar Novamente',
+              textColor: Colors.white,
+              onPressed: () => _importMediaFiles(context, mediaType),
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -579,7 +692,11 @@ class _MediaTabContentState extends State<MediaTabContent> {
 
   Future<void> _importFiles(
       BuildContext context, MediaContentType mediaType) async {
+    debugPrint('===== _importFiles CHAMADO =====');
+    debugPrint('MediaType: ${mediaType.name}');
+    
     final mediaService = Provider.of<MediaService>(context, listen: false);
+    debugPrint('MediaService obtido: $mediaService');
 
     setState(() {
       _isUploading = true;

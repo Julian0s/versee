@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:versee/models/media_models.dart';
 import 'package:versee/services/metadata_service.dart';
+import 'package:versee/services/permission_service.dart';
 
 // Web-specific imports  
 import 'dart:convert' show base64Encode;
@@ -55,9 +56,29 @@ class FileManagerService extends ChangeNotifier {
 
   // Pick and import audio files
   Future<List<AudioItem>> pickAudioFiles() async {
-    if (!kIsWeb && !_isInitialized) await initialize();
+    debugPrint('===== FileManagerService.pickAudioFiles() INICIADO =====');
+    debugPrint('kIsWeb: $kIsWeb, _isInitialized: $_isInitialized');
+    
+    if (!kIsWeb && !_isInitialized) {
+      debugPrint('Inicializando FileManagerService...');
+      await initialize();
+    }
 
     try {
+      // Request permissions on Android
+      if (!kIsWeb && Platform.isAndroid) {
+        debugPrint('Solicitando permissões Android...');
+        final hasPermission = await PermissionService.requestMediaPermission(MediaType.audio);
+        debugPrint('Permissão concedida: $hasPermission');
+        if (!hasPermission) {
+          debugPrint('Permissão de áudio negada');
+          return [];
+        }
+      }
+      
+      debugPrint('Abrindo FilePicker...');
+      debugPrint('Extensões permitidas: $audioExtensions');
+      
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: audioExtensions,
@@ -65,7 +86,10 @@ class FileManagerService extends ChangeNotifier {
         withData: kIsWeb, // Para web, precisamos dos bytes
       );
 
+      debugPrint('FilePicker resultado: ${result != null ? "Arquivos selecionados" : "Cancelado"}');
+      
       if (result != null && result.files.isNotEmpty) {
+        debugPrint('${result.files.length} arquivos selecionados');
         List<AudioItem> audioItems = [];
         
         for (PlatformFile file in result.files) {
@@ -99,6 +123,15 @@ class FileManagerService extends ChangeNotifier {
     if (!kIsWeb && !_isInitialized) await initialize();
 
     try {
+      // Request permissions on Android
+      if (!kIsWeb && Platform.isAndroid) {
+        final hasPermission = await PermissionService.requestMediaPermission(MediaType.video);
+        if (!hasPermission) {
+          debugPrint('Permissão de vídeo negada');
+          return [];
+        }
+      }
+      
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: videoExtensions,
@@ -140,6 +173,15 @@ class FileManagerService extends ChangeNotifier {
     if (!kIsWeb && !_isInitialized) await initialize();
 
     try {
+      // Request permissions on Android
+      if (!kIsWeb && Platform.isAndroid) {
+        final hasPermission = await PermissionService.requestMediaPermission(MediaType.image);
+        if (!hasPermission) {
+          debugPrint('Permissão de imagem negada');
+          return [];
+        }
+      }
+      
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: imageExtensions,

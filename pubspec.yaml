@@ -37,6 +37,9 @@ dependencies:
   shared_preferences: ^2.2.3
   crypto: ^3.0.3
   xml: ^6.4.2
+  # Permission handling
+  permission_handler: ^11.3.1
+  device_info_plus: ^10.1.2
   # Platform-specific dependencies
   # web: ^0.5.1  # Web platform APIs - removed for Android compatibility
   # presentation_displays: ^1.0.0  # Physical displays (coming soon)

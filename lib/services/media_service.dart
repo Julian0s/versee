@@ -8,26 +8,19 @@ import 'package:versee/models/media_models.dart';
 import 'package:versee/services/file_manager_service.dart';
 import 'package:versee/services/firebase_manager.dart';
 import 'package:versee/services/auth_service.dart';
-import 'package:versee/services/media_upload_service.dart';
+import 'package:versee/services/native_mobile_media_service.dart';
 // Platform abstraction imports
 import 'package:versee/platform/platform.dart';
 
 // Platform-specific imports with conditional compilation
 import 'dart:io' as io if (dart.library.io) 'dart:io';
 
-// Web-only implementations wrapped in conditionals
-class _WebFileStub {
-  static Future<List<dynamic>> pickFiles(String accept) async {
-    return <dynamic>[];
-  }
-}
-
 class MediaService extends ChangeNotifier {
   final List<MediaItem> _mediaItems = [];
   final List<MediaCollection> _collections = [];
   final FileManagerService _fileManager = FileManagerService();
   final FirebaseManager _firebaseManager = FirebaseManager();
-  final MediaUploadService _uploadService = MediaUploadService();
+  final NativeMobileMediaService _nativeMediaService = NativeMobileMediaService();
   
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
@@ -51,7 +44,6 @@ class MediaService extends ChangeNotifier {
 
   Future<void> _initializeAndLoadData() async {
     try {
-      await _initializeFileManager();
       await _loadPersistedMediaItems();
       await _startRealtimeSync();
       _isInitialized = true;
@@ -61,15 +53,6 @@ class MediaService extends ChangeNotifier {
     }
   }
 
-  Future<void> _initializeFileManager() async {
-    try {
-      if (!_fileManager.isInitialized) {
-        await _fileManager.initialize();
-      }
-    } catch (e) {
-      debugPrint('Error initializing FileManager: $e');
-    }
-  }
 
   void _initializeSampleData() {
     // No longer adding sample data by default
@@ -297,24 +280,15 @@ class MediaService extends ChangeNotifier {
     return sortedItems.take(limit).toList();
   }
 
-  // File import methods with enhanced upload and compression
+  // File import methods - MOBILE ONLY
   Future<List<AudioItem>> importAudioFiles() async {
     try {
-      debugPrint('Iniciando importação de arquivos de áudio...');
+      debugPrint('🎵 Iniciando importação de arquivos de áudio...');
       
-      // Use file picker to get HTML files
-      final files = await _pickAudioFiles();
+      // Usar o novo serviço nativo
+      final uploadedItems = await _nativeMediaService.uploadAudioFiles();
       
-      if (files.isEmpty) {
-        throw Exception('Nenhum arquivo de áudio selecionado');
-      }
-      
-      debugPrint('${files.length} arquivos selecionados para upload');
-      
-      // Upload with compression and metadata extraction
-      final uploadedItems = await _uploadService.uploadAudioFiles(files);
-      
-      debugPrint('${uploadedItems.length} arquivos processados com sucesso');
+      debugPrint('🎵 ${uploadedItems.length} arquivos processados com sucesso');
       
       // Add to local list and force UI update
       for (final item in uploadedItems) {
@@ -325,30 +299,21 @@ class MediaService extends ChangeNotifier {
       await Future.delayed(const Duration(milliseconds: 500));
       await refreshFromFirebase();
       
-      return uploadedItems.cast<AudioItem>();
+      return uploadedItems;
     } catch (e) {
-      debugPrint('Error importing audio files: $e');
+      debugPrint('❌ Erro na importação de áudio: $e');
       rethrow;
     }
   }
 
   Future<List<VideoItem>> importVideoFiles() async {
     try {
-      debugPrint('Iniciando importação de arquivos de vídeo...');
+      debugPrint('🎥 Iniciando importação de arquivos de vídeo...');
       
-      // Use file picker to get HTML files
-      final files = await _pickVideoFiles();
+      // Usar o novo serviço nativo
+      final uploadedItems = await _nativeMediaService.uploadVideoFiles();
       
-      if (files.isEmpty) {
-        throw Exception('Nenhum arquivo de vídeo selecionado');
-      }
-      
-      debugPrint('${files.length} arquivos selecionados para upload');
-      
-      // Upload with compression and thumbnail generation
-      final uploadedItems = await _uploadService.uploadVideoFiles(files);
-      
-      debugPrint('${uploadedItems.length} arquivos processados com sucesso');
+      debugPrint('🎥 ${uploadedItems.length} arquivos processados com sucesso');
       
       // Add to local list and force UI update
       for (final item in uploadedItems) {
@@ -359,30 +324,21 @@ class MediaService extends ChangeNotifier {
       await Future.delayed(const Duration(milliseconds: 500));
       await refreshFromFirebase();
       
-      return uploadedItems.cast<VideoItem>();
+      return uploadedItems;
     } catch (e) {
-      debugPrint('Error importing video files: $e');
+      debugPrint('❌ Erro na importação de vídeo: $e');
       rethrow;
     }
   }
 
   Future<List<ImageItem>> importImageFiles() async {
     try {
-      debugPrint('Iniciando importação de imagens...');
+      debugPrint('🖼️ Iniciando importação de imagens...');
       
-      // Use file picker to get HTML files
-      final files = await _pickImageFiles();
+      // Usar o novo serviço nativo
+      final uploadedItems = await _nativeMediaService.uploadImageFiles();
       
-      if (files.isEmpty) {
-        throw Exception('Nenhuma imagem selecionada');
-      }
-      
-      debugPrint('${files.length} imagens selecionadas para upload');
-      
-      // Upload with compression and thumbnail generation
-      final uploadedItems = await _uploadService.uploadImageFiles(files);
-      
-      debugPrint('${uploadedItems.length} imagens processadas com sucesso');
+      debugPrint('🖼️ ${uploadedItems.length} imagens processadas com sucesso');
       
       // Add to local list and force UI update
       for (final item in uploadedItems) {
@@ -393,43 +349,57 @@ class MediaService extends ChangeNotifier {
       await Future.delayed(const Duration(milliseconds: 500));
       await refreshFromFirebase();
       
-      return uploadedItems.cast<ImageItem>();
+      return uploadedItems;
     } catch (e) {
-      debugPrint('Error importing image files: $e');
+      debugPrint('❌ Erro na importação de imagem: $e');
       rethrow;
     }
   }
 
-  // Initialize file manager
-  Future<void> initializeFileManager() async {
-    await _initializeFileManager();
-  }
+  // Get native media service for direct access
+  NativeMobileMediaService get nativeMediaService => _nativeMediaService;
 
-  // Get file manager for direct access
-  FileManagerService get fileManager => _fileManager;
-
-  // Delete media item and its file
-  Future<bool> deleteMediaItemWithFile(String id) async {
-    final item = getMediaItemById(id);
-    if (item != null && item.sourceType == MediaSourceType.file) {
-      final fileDeleted = await _fileManager.deleteMediaFile(item.sourcePath);
-      if (fileDeleted) {
-        removeMediaItem(id);
-        return true;
+  // Storage management simplified for mobile-only architecture
+  
+  // Get storage information (compatibility method)
+  Future<Map<String, dynamic>> getStorageInfo() async {
+    // Simplified storage info for mobile
+    int totalSize = 0;
+    int audioFiles = 0;
+    int videoFiles = 0;
+    int imageFiles = 0;
+    int audioSize = 0;
+    int videoSize = 0;
+    int imageSize = 0;
+    
+    for (final item in _mediaItems) {
+      switch (item.type) {
+        case MediaContentType.audio:
+          audioFiles++;
+          audioSize += (item as AudioItem).fileSize ?? 0;
+          break;
+        case MediaContentType.video:
+          videoFiles++;
+          videoSize += (item as VideoItem).fileSize ?? 0;
+          break;
+        case MediaContentType.image:
+          imageFiles++;
+          imageSize += (item as ImageItem).fileSize ?? 0;
+          break;
       }
     }
-    return false;
-  }
-
-  // Clean up unused files
-  Future<void> cleanupUnusedFiles() async {
-    await _fileManager.cleanupUnusedFiles(_mediaItems);
-  }
-
-  // Get storage information
-  Future<Map<String, dynamic>> getStorageInfo() async {
-    await _initializeFileManager();
-    return await _fileManager.getStorageInfo();
+    
+    totalSize = audioSize + videoSize + imageSize;
+    
+    return {
+      'totalSize': totalSize,
+      'audioSize': audioSize,
+      'videoSize': videoSize,
+      'imageSize': imageSize,
+      'audioFiles': audioFiles,
+      'videoFiles': videoFiles,
+      'imageFiles': imageFiles,
+    };
   }
 
   // Clear all data (for testing or reset)
@@ -444,37 +414,16 @@ class MediaService extends ChangeNotifier {
     notifyListeners();
   }
   
-  // WEB FILE PICKER METHODS
-  
-  /// File picker para arquivos de áudio (Web)
-  Future<List<dynamic>> _pickAudioFiles() async {
-    if (!kIsWeb) return <dynamic>[];
-    
-    // Web-only file picker implementation would go here
-    return <dynamic>[];
-  }
-  
-  /// File picker para arquivos de vídeo (Web)
-  Future<List<dynamic>> _pickVideoFiles() async {
-    if (!kIsWeb) return <dynamic>[];
-    
-    // Web-only file picker implementation would go here
-    return <dynamic>[];
-  }
-  
-  /// File picker para imagens (Web)
-  Future<List<dynamic>> _pickImageFiles() async {
-    if (!kIsWeb) return <dynamic>[];
-    
-    // Web-only file picker implementation would go here
-    return <dynamic>[];
-  }
+  // MOBILE-ONLY SERVICE - Upload gerenciado pelo NativeMobileMediaService
   
   // Check if media items are being persisted to Firebase
-  bool get isUploadingToFirebase {
-    // This could be enhanced to track actual upload status
-    return false; // Placeholder for now
-  }
+  bool get isUploadingToFirebase => _nativeMediaService.isUploading;
+  
+  // Upload progress getters
+  double get uploadProgress => _nativeMediaService.uploadProgress;
+  String get currentUploadFile => _nativeMediaService.currentFileName;
+  int get totalUploadFiles => _nativeMediaService.totalFiles;
+  int get processedUploadFiles => _nativeMediaService.processedFiles;
 
   // Reset to sample data
   void resetToSampleData() {
