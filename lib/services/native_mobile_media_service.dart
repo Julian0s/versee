@@ -121,8 +121,19 @@ class NativeMobileMediaService extends ChangeNotifier {
             // Se falhar, usar a própria imagem
             thumbnailUrl ??= downloadUrl;
           } else if (type == MediaType.video) {
-            // TODO: Implementar geração de thumbnail para vídeos
-            thumbnailUrl = null;
+            // Gerar thumbnail para vídeo
+            thumbnailUrl = await _generateVideoThumbnail(
+              file.path!,
+              user.uid,
+              file.name,
+            );
+          } else if (type == MediaType.audio) {
+            // Gerar ou extrair capa para áudio
+            thumbnailUrl = await _generateAudioCover(
+              compressedBytes,
+              user.uid,
+              file.name,
+            );
           }
           
           // Criar item de mídia
@@ -269,6 +280,104 @@ class NativeMobileMediaService extends ChangeNotifier {
       
     } catch (e) {
       debugPrint('❌ Erro ao gerar thumbnail: $e');
+      return null;
+    }
+  }
+  
+  /// Gerar thumbnail para vídeo
+  Future<String?> _generateVideoThumbnail(
+    String videoPath,
+    String userId,
+    String fileName,
+  ) async {
+    try {
+      debugPrint('🎥 Gerando thumbnail para vídeo...');
+      
+      // Gerar thumbnail do vídeo
+      final thumbnailBytes = await CompressionService.generateVideoThumbnail(videoPath);
+      
+      if (thumbnailBytes == null) {
+        debugPrint('⚠️ Não foi possível gerar thumbnail do vídeo');
+        return null;
+      }
+      
+      // Upload da thumbnail para Firebase
+      final sanitizedFileName = _sanitizeFileName(fileName);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final thumbnailPath = 'users/$userId/thumbnails/${timestamp}_video_thumb_$sanitizedFileName.jpg';
+      
+      debugPrint('📁 Upload video thumbnail path: $thumbnailPath');
+      final ref = _storage.ref().child(thumbnailPath);
+      
+      final uploadTask = ref.putData(
+        thumbnailBytes,
+        SettableMetadata(
+          contentType: 'image/jpeg',
+          customMetadata: {'isThumbnail': 'true', 'isVideoThumbnail': 'true'},
+        ),
+      );
+      
+      final snapshot = await uploadTask;
+      
+      if (snapshot.state == TaskState.success) {
+        final thumbnailUrl = await ref.getDownloadURL();
+        debugPrint('✅ Thumbnail de vídeo criada: $thumbnailUrl');
+        return thumbnailUrl;
+      }
+      
+      return null;
+      
+    } catch (e) {
+      debugPrint('❌ Erro ao gerar thumbnail de vídeo: $e');
+      return null;
+    }
+  }
+  
+  /// Gerar ou extrair capa para áudio
+  Future<String?> _generateAudioCover(
+    Uint8List audioBytes,
+    String userId,
+    String fileName,
+  ) async {
+    try {
+      debugPrint('🎵 Gerando capa para áudio...');
+      
+      // Gerar ou extrair capa do áudio
+      final coverBytes = await CompressionService.generateAudioCover(audioBytes, fileName);
+      
+      if (coverBytes == null) {
+        debugPrint('⚠️ Não foi possível gerar capa para o áudio');
+        return null;
+      }
+      
+      // Upload da capa para Firebase
+      final sanitizedFileName = _sanitizeFileName(fileName);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final coverPath = 'users/$userId/thumbnails/${timestamp}_audio_cover_$sanitizedFileName.jpg';
+      
+      debugPrint('📁 Upload audio cover path: $coverPath');
+      final ref = _storage.ref().child(coverPath);
+      
+      final uploadTask = ref.putData(
+        coverBytes,
+        SettableMetadata(
+          contentType: 'image/jpeg',
+          customMetadata: {'isThumbnail': 'true', 'isAudioCover': 'true'},
+        ),
+      );
+      
+      final snapshot = await uploadTask;
+      
+      if (snapshot.state == TaskState.success) {
+        final coverUrl = await ref.getDownloadURL();
+        debugPrint('✅ Capa de áudio criada: $coverUrl');
+        return coverUrl;
+      }
+      
+      return null;
+      
+    } catch (e) {
+      debugPrint('❌ Erro ao gerar capa de áudio: $e');
       return null;
     }
   }

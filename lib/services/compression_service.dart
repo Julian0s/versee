@@ -1,8 +1,11 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image/image.dart' as img;
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:versee/services/permission_service.dart';
 
 /// Serviço de compressão para otimização de arquivos de mídia
@@ -273,5 +276,161 @@ class CompressionService {
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+  }
+
+  /// Gerar thumbnail para vídeo
+  static Future<Uint8List?> generateVideoThumbnail(String videoPath) async {
+    try {
+      debugPrint('🎥 Gerando thumbnail para vídeo...');
+      
+      // Obter diretório temporário
+      final tempDir = await getTemporaryDirectory();
+      final thumbnailPath = '${tempDir.path}/thumb_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      
+      // Gerar thumbnail usando video_thumbnail
+      final thumbnailFile = await VideoThumbnail.thumbnailFile(
+        video: videoPath,
+        thumbnailPath: thumbnailPath,
+        imageFormat: ImageFormat.JPEG,
+        maxHeight: 400,
+        quality: 75,
+        timeMs: 1000, // Pegar frame após 1 segundo
+      );
+      
+      if (thumbnailFile == null) {
+        debugPrint('❌ Não foi possível gerar thumbnail do vídeo');
+        return null;
+      }
+      
+      // Ler arquivo de thumbnail
+      final file = File(thumbnailFile);
+      if (!await file.exists()) {
+        debugPrint('❌ Arquivo de thumbnail não encontrado');
+        return null;
+      }
+      
+      final thumbnailBytes = await file.readAsBytes();
+      
+      // Limpar arquivo temporário
+      try {
+        await file.delete();
+      } catch (e) {
+        debugPrint('⚠️ Não foi possível deletar arquivo temporário: $e');
+      }
+      
+      debugPrint('🎥 Thumbnail de vídeo gerada: ${thumbnailBytes.length} bytes');
+      return thumbnailBytes;
+      
+    } catch (e) {
+      debugPrint('❌ Erro ao gerar thumbnail de vídeo: $e');
+      return null;
+    }
+  }
+
+  /// Gerar ou extrair capa para áudio
+  static Future<Uint8List?> generateAudioCover(Uint8List audioBytes, String fileName) async {
+    try {
+      debugPrint('🎵 Processando capa de áudio...');
+      
+      // TODO: Implementar extração de metadata/artwork do arquivo de áudio
+      // Por enquanto, vamos criar uma capa padrão
+      
+      // Criar uma imagem padrão para áudio (gradiente com ícone de música)
+      final defaultCover = await _createDefaultAudioCover(fileName);
+      
+      if (defaultCover != null) {
+        debugPrint('🎵 Capa padrão criada para áudio: ${defaultCover.length} bytes');
+      }
+      
+      return defaultCover;
+      
+    } catch (e) {
+      debugPrint('❌ Erro ao gerar capa de áudio: $e');
+      return null;
+    }
+  }
+
+  /// Criar capa padrão para áudio
+  static Future<Uint8List?> _createDefaultAudioCover(String fileName) async {
+    try {
+      // Criar uma imagem 400x400 com gradiente e texto
+      final image = img.Image(width: 400, height: 400);
+      
+      // Criar gradiente de fundo (roxo para azul)
+      for (int y = 0; y < 400; y++) {
+        for (int x = 0; x < 400; x++) {
+          final progress = y / 400;
+          final r = (138 * (1 - progress) + 63 * progress).round();
+          final g = (43 * (1 - progress) + 81 * progress).round();
+          final b = (226 * (1 - progress) + 181 * progress).round();
+          
+          image.setPixelRgba(x, y, r, g, b, 255);
+        }
+      }
+      
+      // Adicionar ícone de música no centro (círculo com nota musical)
+      final centerX = 200;
+      final centerY = 200;
+      final radius = 80;
+      
+      // Desenhar círculo branco semi-transparente
+      for (int y = centerY - radius; y <= centerY + radius; y++) {
+        for (int x = centerX - radius; x <= centerX + radius; x++) {
+          final distance = ((x - centerX) * (x - centerX) + (y - centerY) * (y - centerY));
+          if (distance <= radius * radius) {
+            final pixel = image.getPixel(x, y);
+            // Misturar com branco semi-transparente
+            final r = (pixel.r * 0.3 + 255 * 0.7).round();
+            final g = (pixel.g * 0.3 + 255 * 0.7).round();
+            final b = (pixel.b * 0.3 + 255 * 0.7).round();
+            image.setPixelRgba(x, y, r, g, b, 255);
+          }
+        }
+      }
+      
+      // Desenhar símbolo de nota musical simples (♪)
+      // Haste vertical
+      for (int y = centerY - 40; y <= centerY + 20; y++) {
+        for (int x = centerX - 2; x <= centerX + 2; x++) {
+          image.setPixelRgba(x, y, 138, 43, 226, 255);
+        }
+      }
+      
+      // Cabeça da nota (oval)
+      final ovalCenterY = centerY + 20;
+      for (int y = ovalCenterY - 15; y <= ovalCenterY + 15; y++) {
+        for (int x = centerX - 20; x <= centerX + 20; x++) {
+          final dx = (x - centerX) / 20.0;
+          final dy = (y - ovalCenterY) / 15.0;
+          if (dx * dx + dy * dy <= 1) {
+            image.setPixelRgba(x, y, 138, 43, 226, 255);
+          }
+        }
+      }
+      
+      // Bandeirola
+      for (int y = centerY - 40; y <= centerY - 20; y++) {
+        for (int x = centerX; x <= centerX + 30; x++) {
+          if (y == centerY - 40 || x == centerX + 30 || 
+              (x - centerX) == (centerY - 40 - y) * 2) {
+            image.setPixelRgba(x, y, 138, 43, 226, 255);
+          }
+        }
+      }
+      
+      // Adicionar nome do arquivo na parte inferior
+      // Por enquanto, vamos deixar sem texto (requer fonte)
+      
+      // Codificar como JPEG
+      final coverBytes = Uint8List.fromList(
+        img.encodeJpg(image, quality: 85)
+      );
+      
+      return coverBytes;
+      
+    } catch (e) {
+      debugPrint('❌ Erro ao criar capa padrão: $e');
+      return null;
+    }
   }
 }
