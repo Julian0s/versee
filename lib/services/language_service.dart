@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Instância global do LanguageService para bridge híbrida com Riverpod
+LanguageService? _globalLanguageService;
+
 /// Serviço para gerenciar idiomas da aplicação
 class LanguageService with ChangeNotifier {
   static const String _languageKey = 'app_language';
   
   Locale _currentLocale = const Locale('pt', 'BR');
+  
+  LanguageService() {
+    // Registrar esta instância globalmente para bridge híbrida
+    _globalLanguageService = this;
+  }
   
   Locale get currentLocale => _currentLocale;
   String get currentLanguageCode => _currentLocale.languageCode;
@@ -71,6 +79,19 @@ class LanguageService with ChangeNotifier {
 
   /// Instância singleton das traduções
   AppLocalizations get strings => AppLocalizations(_currentLocale.languageCode);
+  
+  /// Sincroniza com Riverpod - usado para bridge híbrida
+  /// Este método é chamado quando o Riverpod muda o idioma
+  void syncWithRiverpod(Locale newLocale) {
+    debugPrint('🔄 [PROVIDER] Sincronizando com Riverpod: ${newLocale.languageCode}');
+    if (_currentLocale != newLocale) {
+      _currentLocale = newLocale;
+      notifyListeners(); // Isso fará todos os Consumer<LanguageService> reagirem
+    }
+  }
+  
+  /// Função estática para acesso global à instância (bridge híbrida)
+  static LanguageService? get globalInstance => _globalLanguageService;
 }
 
 /// Classe para gerenciar todas as traduções

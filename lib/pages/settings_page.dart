@@ -12,11 +12,12 @@ import 'package:versee/services/user_settings_service.dart';
 import 'package:versee/services/display_manager.dart';
 import 'package:versee/services/media_sync_service.dart';
 import 'package:versee/services/xml_bible_service.dart';
-import 'package:versee/services/cloud_bible_service.dart';
 import 'package:versee/models/bible_models.dart';
 import 'package:versee/models/display_models.dart' hide ConnectionState;
 import 'package:versee/widgets/auth_dialog.dart';
 import 'package:versee/widgets/media_cache_manager_widget.dart';
+import 'package:versee/widgets/theme_toggle_button_riverpod.dart';
+import 'package:versee/widgets/language_selector_riverpod.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -39,7 +40,6 @@ class _SettingsPageState extends State<SettingsPage> {
   List<BibleVersionInfo> _importedBibles = [];
   List<String> _enabledImportedBibles = [];
   final XmlBibleService _xmlBibleService = XmlBibleService();
-  final CloudBibleService _cloudBibleService = CloudBibleService();
 
   // Configurações de displays (removido configurações da segunda tela legacy)
 
@@ -161,12 +161,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 languageService.strings.theme,
                 Icons.palette,
                 [
-                  _buildTile(
-                    languageService.strings.theme,
-                    languageService.strings.selectTheme,
-                    Icons.palette,
-                    () => _showThemeBottomSheet(),
-                  ),
+                  ThemeToggleButtonRiverpod(),
                 ],
               );
             },
@@ -180,12 +175,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 languageService.strings.language,
                 Icons.language,
                 [
-                  _buildTile(
-                    languageService.strings.appLanguage,
-                    languageService.strings.selectLanguage,
-                    Icons.translate,
-                    () => _showLanguageBottomSheet(),
-                  ),
+                  LanguageSelectorRiverpod(),
                 ],
               );
             },
@@ -1478,151 +1468,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _showThemeBottomSheet() {
-    final languageService = Provider.of<LanguageService>(context, listen: false);
-    final userSettingsService = Provider.of<UserSettingsService>(context, listen: false);
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(languageService.strings.selectTheme),
-        contentPadding: EdgeInsets.zero,
-        content: Consumer2<ThemeService, UserSettingsService>(
-          builder: (context, themeService, userSettings, child) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // System theme
-                ListTile(
-                  leading: Icon(
-                    Icons.brightness_auto,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  title: Text(languageService.strings.systemTheme),
-                  trailing: themeService.themeMode == ThemeMode.system
-                      ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-                      : const SizedBox(width: 24),
-                  onTap: () async {
-                    await userSettingsService.setTheme(ThemeMode.system);
-                    await themeService.setSystemTheme();
-                    Navigator.pop(context);
-                  },
-                ),
-                
-                // Light theme
-                ListTile(
-                  leading: Icon(
-                    Icons.light_mode,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  title: Text(languageService.strings.lightTheme),
-                  trailing: themeService.themeMode == ThemeMode.light
-                      ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-                      : const SizedBox(width: 24),
-                  onTap: () async {
-                    await userSettingsService.setTheme(ThemeMode.light);
-                    await themeService.setLightTheme();
-                    Navigator.pop(context);
-                  },
-                ),
-                
-                // Dark theme
-                ListTile(
-                  leading: Icon(
-                    Icons.dark_mode,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  title: Text(languageService.strings.darkTheme),
-                  trailing: themeService.themeMode == ThemeMode.dark
-                      ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-                      : const SizedBox(width: 24),
-                  onTap: () async {
-                    await userSettingsService.setTheme(ThemeMode.dark);
-                    await themeService.setDarkTheme();
-                    Navigator.pop(context);
-                  },
-                ),
-              ],
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(languageService.strings.cancel),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showLanguageBottomSheet() {
-    final languageService = Provider.of<LanguageService>(context, listen: false);
-    final userSettingsService = Provider.of<UserSettingsService>(context, listen: false);
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(languageService.strings.selectLanguage),
-        contentPadding: EdgeInsets.zero,
-        content: Consumer2<LanguageService, UserSettingsService>(
-          builder: (context, languageService, userSettings, child) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: LanguageService.languageNames.entries.map((entry) {
-                final languageCode = entry.key;
-                final languageName = entry.value;
-                final isSelected = languageService.currentLanguageCode == languageCode;
-                
-                IconData languageIcon;
-                switch (languageCode) {
-                  case 'pt':
-                    languageIcon = Icons.flag;
-                    break;
-                  case 'en':
-                    languageIcon = Icons.flag_outlined;
-                    break;
-                  case 'es':
-                    languageIcon = Icons.outlined_flag;
-                    break;
-                  case 'ja':
-                    languageIcon = Icons.flag_circle;
-                    break;
-                  default:
-                    languageIcon = Icons.language;
-                }
-                
-                return ListTile(
-                  leading: Icon(
-                    languageIcon,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  title: Text(languageName),
-                  trailing: isSelected
-                      ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-                      : const SizedBox(width: 24),
-                  onTap: () async {
-                    await userSettingsService.setLanguage(languageCode);
-                    await languageService.setLanguage(languageCode);
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                    }
-                  },
-                );
-              }).toList(),
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(languageService.strings.cancel),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _showLoginDialog() async {
     final success = await AuthDialog.show(
       context: context,
@@ -1731,9 +1576,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       );
       
-      // DESABILITADO: Sincronização com nuvem temporariamente desabilitada para resolver problemas de permissão
-      // await _cloudBibleService.syncLocalBiblesToCloud();
-      // await _cloudBibleService.syncCloudBiblesToLocal();
+      // Note: Cloud sync not implemented yet
       
       // Recarregar lista
       await _loadImportedBibles();

@@ -2,7 +2,8 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart' as provider;
 import 'package:versee/theme.dart';
 import 'package:versee/pages/presenter_page.dart';
 import 'package:versee/pages/notes_page.dart';
@@ -34,10 +35,9 @@ import 'package:versee/services/notes_service.dart';
 import 'package:versee/services/theme_service.dart';
 import 'package:versee/services/language_service.dart';
 import 'package:versee/services/user_settings_service.dart';
-import 'package:versee/services/storage_analysis_service.dart';
-import 'package:versee/services/storage_monitoring_service.dart';
 import 'package:versee/services/presentation_manager.dart';
 import 'package:versee/services/presentation_engine_service.dart';
+import 'package:versee/providers/riverpod_providers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,14 +71,20 @@ void main() async {
   // Inicialização sequencial e robusta dos serviços
   final appServices = await initializeAppServices();
   
-  runApp(VerseeApp(
-    themeService: appServices.themeService,
-    languageService: appServices.languageService,
-    userSettingsService: appServices.userSettingsService,
-    authService: appServices.authService,
-    firebaseManager: appServices.firebaseManager,
-    isOfflineMode: !appServices.firebaseInitialized,
-  ));
+  // Envolver o app com ProviderScope do Riverpod
+  // Isso permite que ambos Provider e Riverpod funcionem simultaneamente
+  runApp(
+    ProviderScope(
+      child: VerseeApp(
+        themeService: appServices.themeService,
+        languageService: appServices.languageService,
+        userSettingsService: appServices.userSettingsService,
+        authService: appServices.authService,
+        firebaseManager: appServices.firebaseManager,
+        isOfflineMode: !appServices.firebaseInitialized,
+      ),
+    ),
+  );
 }
 
 /// Container para os serviços inicializados
@@ -199,63 +205,61 @@ class VerseeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
+    return provider.MultiProvider(
       providers: [
         // Serviços básicos sempre disponíveis
-        ChangeNotifierProvider.value(value: themeService),
-        ChangeNotifierProvider.value(value: languageService),
-        ChangeNotifierProvider.value(value: authService),
-        Provider.value(value: firebaseManager),
-        Provider.value(value: isOfflineMode),
+        provider.ChangeNotifierProvider.value(value: themeService),
+        provider.ChangeNotifierProvider.value(value: languageService),
+        provider.ChangeNotifierProvider.value(value: authService),
+        provider.Provider.value(value: firebaseManager),
+        provider.Provider.value(value: isOfflineMode),
         
         // UserSettingsService com inicialização simples
-        ChangeNotifierProvider.value(value: userSettingsService),
+        provider.ChangeNotifierProvider.value(value: userSettingsService),
         
         // Serviços de mídia (sem dependências complexas)
-        ChangeNotifierProvider(create: (_) => MediaService()),
-        ChangeNotifierProvider(create: (_) => HybridMediaService()),
-        ChangeNotifierProvider(create: (_) => MediaPlaybackService()),
-        ChangeNotifierProvider(create: (_) => PlaylistService()),
-        ChangeNotifierProvider(create: (_) => MediaSyncService()),
+        provider.ChangeNotifierProvider(create: (_) => MediaService()),
+        provider.ChangeNotifierProvider(create: (_) => HybridMediaService()),
+        provider.ChangeNotifierProvider(create: (_) => MediaPlaybackService()),
+        provider.ChangeNotifierProvider(create: (_) => PlaylistService()),
+        provider.ChangeNotifierProvider(create: (_) => MediaSyncService()),
         
         // Serviços de conteúdo
-        ChangeNotifierProvider(create: (_) => VerseCollectionService()),
-        ChangeNotifierProvider(create: (_) => NotesService()),
+        provider.ChangeNotifierProvider(create: (_) => VerseCollectionService()),
+        provider.ChangeNotifierProvider(create: (_) => NotesService()),
         
         // Serviços de sincronização (inicializados depois)
-        ChangeNotifierProvider(
+        provider.ChangeNotifierProvider(
           create: (_) => isOfflineMode ? DataSyncManager() : DataSyncManager(),
         ),
-        ChangeNotifierProvider(
+        provider.ChangeNotifierProvider(
           create: (_) => isOfflineMode ? RealtimeDataService() : RealtimeDataService(),
         ),
         
         // Serviços Firebase (só se disponível)
         if (!isOfflineMode) ...[
-          ChangeNotifierProvider(
+          provider.ChangeNotifierProvider(
             create: (context) => FirestoreSyncService(
-              Provider.of<AuthService>(context, listen: false),
+              provider.Provider.of<AuthService>(context, listen: false),
             ),
           ),
         ],
         
         // Display services (inicialização tardia e segura)
-        ChangeNotifierProvider<DisplayManager>(
+        provider.ChangeNotifierProvider<DisplayManager>(
           create: (_) => _createDisplayManagerSafely(),
         ),
         
         // Dual screen service (simples)
-        ChangeNotifierProvider(
+        provider.ChangeNotifierProvider(
           create: (context) => _createDualScreenServiceSafely(context),
         ),
         
         // Presentation services (nova Presentation API)
-        ChangeNotifierProvider(create: (_) => PresentationEngineService()),
-        ChangeNotifierProvider(create: (_) => PresentationManager()),
+        provider.ChangeNotifierProvider(create: (_) => PresentationEngineService()),
+        provider.ChangeNotifierProvider(create: (_) => PresentationManager()),
         
         // Serviços de análise
-        ChangeNotifierProvider(create: (_) => StorageAnalysisService()),
-        ChangeNotifierProvider(create: (_) => StorageMonitoringService()),
       ],
       child: _AppWithTheme(),
     );
@@ -288,9 +292,9 @@ class VerseeApp extends StatelessWidget {
       // Configuração posterior, não no construtor
       Future.microtask(() {
         try {
-          final mediaPlaybackService = Provider.of<MediaPlaybackService>(context, listen: false);
-          final presentationManager = Provider.of<PresentationManager>(context, listen: false);
-          final presentationEngine = Provider.of<PresentationEngineService>(context, listen: false);
+          final mediaPlaybackService = provider.Provider.of<MediaPlaybackService>(context, listen: false);
+          final presentationManager = provider.Provider.of<PresentationManager>(context, listen: false);
+          final presentationEngine = provider.Provider.of<PresentationEngineService>(context, listen: false);
           
           dualScreenService.setMediaPlaybackService(mediaPlaybackService);
           dualScreenService.setPresentationManager(presentationManager);
@@ -312,16 +316,24 @@ class _AppWithTheme extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<ThemeService, LanguageService>(
-      builder: (context, themeService, languageService, child) {
+    return Consumer(
+      builder: (context, ref, child) {
+        // Usando Riverpod para tema
+        final themeMode = ref.watch(themeModeProvider);
+        final lightTheme = ref.watch(lightThemeProvider);
+        final darkTheme = ref.watch(darkThemeProvider);
+        
+        // Usando Riverpod para idioma
+        final currentLocale = ref.watch(currentLocaleProvider);
+        
         return MaterialApp(
           title: 'VERSEE',
           debugShowCheckedModeBanner: false,
-          theme: ThemeService.lightTheme,
-          darkTheme: ThemeService.darkTheme,
-          themeMode: themeService.themeMode,
-          locale: languageService.currentLocale,
-          supportedLocales: LanguageService.supportedLocales,
+          theme: lightTheme,          // ← Riverpod theme
+          darkTheme: darkTheme,       // ← Riverpod theme
+          themeMode: themeMode,       // ← Riverpod theme mode
+          locale: currentLocale,                        // ← Riverpod locale
+          supportedLocales: ref.read(supportedLocalesProvider), // ← Riverpod supportedLocales
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
@@ -371,7 +383,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<LanguageService>(
+    return provider.Consumer<LanguageService>(
       builder: (context, languageService, child) {
         return Scaffold(
           body: _pages[_currentIndex],
@@ -418,7 +430,7 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthService>(
+    return provider.Consumer<AuthService>(
       builder: (context, authService, child) {
         debugPrint('🔄 [AuthWrapper] Build - isLoading: ${authService.isLoading}, isAuthenticated: ${authService.isAuthenticated}');
         
@@ -450,7 +462,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
                       Icon(Icons.cloud_off, color: Colors.orange, size: 16),
                       const SizedBox(width: 6),
                       Expanded(
-                        child: Consumer<LanguageService>(
+                        child: provider.Consumer<LanguageService>(
                           builder: (context, languageService, child) {
                             final offlineText = languageService.currentLanguageCode == 'pt' 
                                 ? 'Modo Offline - Dados serão sincronizados quando a conexão for restaurada'
@@ -494,7 +506,7 @@ class PlaceholderPage extends StatelessWidget {
         elevation: 0,
       ),
       body: Center(
-        child: Consumer<LanguageService>(
+        child: provider.Consumer<LanguageService>(
           builder: (context, languageService, child) {
             final devText = languageService.currentLanguageCode == 'pt' 
                 ? '(Em desenvolvimento)'

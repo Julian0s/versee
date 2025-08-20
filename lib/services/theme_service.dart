@@ -65,6 +65,7 @@ class ThemeService with ChangeNotifier {
 
   /// Define o tema como claro
   Future<void> setLightTheme() async {
+    debugPrint('🎨 [PROVIDER] Tema alterado para: light');
     _themeMode = ThemeMode.light;
     notifyListeners();
     await _saveTheme();
@@ -72,6 +73,7 @@ class ThemeService with ChangeNotifier {
 
   /// Define o tema como escuro
   Future<void> setDarkTheme() async {
+    debugPrint('🎨 [PROVIDER] Tema alterado para: dark');
     _themeMode = ThemeMode.dark;
     notifyListeners();
     await _saveTheme();
@@ -79,6 +81,7 @@ class ThemeService with ChangeNotifier {
 
   /// Define o tema como sistema (automático)
   Future<void> setSystemTheme() async {
+    debugPrint('🎨 [PROVIDER] Tema alterado para: system');
     _themeMode = ThemeMode.system;
     notifyListeners();
     await _saveTheme();

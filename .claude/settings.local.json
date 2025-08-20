@@ -87,7 +87,8 @@
       "Bash(robocopy:*)",
       "Bash(powershell:*)",
       "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s PN6L8TTCAU7HAQBQ install -r \"build\\app\\outputs\\flutter-apk\\app-release.apk\")",
-      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s PN6L8TTCAU7HAQBQ logcat -d)"
+      "Bash(\"C:\\Users\\alexa\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" -s PN6L8TTCAU7HAQBQ logcat -d)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }
