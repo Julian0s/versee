@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as provider;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:versee/providers/riverpod_providers.dart';
 import 'package:versee/models/note_models.dart';
@@ -135,7 +135,7 @@ class _NotesTabContentState extends State<NotesTabContent> {
     
     try {
       debugPrint('🔧 Inicializando serviço para ${widget.contentType}...');
-      final notesService = Provider.of<NotesService>(context, listen: false);
+      final notesService = provider.Provider.of<NotesService>(context, listen: false);
       
       await notesService.initialize();
       
@@ -289,7 +289,7 @@ class _NotesTabContentState extends State<NotesTabContent> {
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
             ),
             const SizedBox(height: 16),
-            Consumer<LanguageService>(
+            provider.Consumer<LanguageService>(
               builder: (context, languageService, child) {
                 final contentType = _getContentTypeName(languageService).toLowerCase();
                 return Column(
@@ -340,7 +340,7 @@ class _NotesTabContentState extends State<NotesTabContent> {
   }
 
   void _showAddDialog(BuildContext context) {
-    final languageService = Provider.of<LanguageService>(context, listen: false);
+    final languageService = provider.Provider.of<LanguageService>(context, listen: false);
     debugPrint('➕ Abrindo dialog para adicionar ${_getContentTypeName(languageService)}');
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -391,7 +391,7 @@ class _NotesTabContentState extends State<NotesTabContent> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Consumer<LanguageService>(
+        return provider.Consumer<LanguageService>(
           builder: (context, languageService, child) {
             return AlertDialog(
               title: Text('${languageService.strings.delete} ${_getContentTypeName(languageService)}'),
@@ -406,7 +406,7 @@ class _NotesTabContentState extends State<NotesTabContent> {
                     Navigator.of(context).pop();
                     debugPrint('🗑️ Confirmado - excluindo ${item.title} (${item.id})');
                     try {
-                      final notesService = Provider.of<NotesService>(context, listen: false);
+                      final notesService = provider.Provider.of<NotesService>(context, listen: false);
                       await notesService.deleteNote(item.id, item.type);
                       debugPrint('✅ Item excluído com sucesso');
                       if (mounted) {

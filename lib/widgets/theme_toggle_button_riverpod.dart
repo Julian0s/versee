@@ -43,10 +43,10 @@ class ThemeToggleButtonRiverpod extends ConsumerWidget {
 
   /// Mostra o diálogo de seleção de tema usando Riverpod
   void _showThemeDialog(BuildContext context, WidgetRef ref) {
-    // Ainda precisamos usar Provider para LanguageService e UserSettingsService
+    // Ainda precisamos usar Provider para LanguageService e dynamic /* UserSettingsService migrado */
     // até que sejam migrados para Riverpod
     final languageService = provider.Provider.of<LanguageService>(context, listen: false);
-    final userSettingsService = provider.Provider.of<UserSettingsService>(context, listen: false);
+    final userSettingsService = provider.Provider.of<dynamic /* UserSettingsService migrado */>(context, listen: false);
     
     showDialog(
       context: context,

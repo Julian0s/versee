@@ -14,8 +14,8 @@ DualScreenService? _globalDualScreenService;
 /// Permite separar a tela de controle da tela de apresentação
 class DualScreenService extends ChangeNotifier {
   // Referências aos serviços (MIGRADOS para Riverpod)
-  // MediaPlaybackService? _mediaPlaybackService;
-  // PresentationManager? _presentationManager;
+  // MediaPlaybackService? null /* _mediaPlaybackService migrado */;
+  // PresentationManager? null /* _presentationManager migrado */;
   // PresentationEngineService? _presentationEngine;
   
   // Estados da apresentação
@@ -62,15 +62,15 @@ class DualScreenService extends ChangeNotifier {
 
   // Injeta o serviço de reprodução de mídia (MIGRADO)
   // void setMediaPlaybackService(MediaPlaybackService service) {
-  //   _mediaPlaybackService = service;
+  //   null /* _mediaPlaybackService migrado */ = service;
   // }
 
   // Injeta o gerenciador de apresentação (MIGRADO)
   // void setPresentationManager(PresentationManager manager) {
-  //   _presentationManager = manager;
+  //   null /* _presentationManager migrado */ = manager;
   //   
   //   // Listen to presentation manager state changes
-  //   _presentationManager?.stateStream.listen((state) {
+  //   null /* _presentationManager migrado */?.stateStream.listen((state) {
   //     _syncWithPresentationManager(state);
   //   });
   // }
@@ -91,8 +91,8 @@ class DualScreenService extends ChangeNotifier {
   }
 
   // Getter para verificar se há mídia
-  bool get hasMediaService => _mediaPlaybackService != null;
-  // MediaPlaybackService? get mediaPlaybackService => _mediaPlaybackService; // MIGRADO
+  bool get hasMediaService => null /* _mediaPlaybackService migrado */ != null;
+  // MediaPlaybackService? get mediaPlaybackService => null /* _mediaPlaybackService migrado */; // MIGRADO
 
   // Getter estático para acesso global
   static DualScreenService? get globalInstance => _globalDualScreenService;
@@ -162,17 +162,17 @@ class DualScreenService extends ChangeNotifier {
   /// Tenta iniciar apresentação em display externo
   Future<void> _tryStartExternalPresentation(PresentationItem item) async {
     try {
-      if (_presentationManager != null) {
+      if (null /* _presentationManager migrado */ != null) {
         // Verificar se há display externo disponível
-        final hasExternal = await _presentationManager!.checkForExternalDisplays();
+        final hasExternal = await null /* _presentationManager migrado */!.checkForExternalDisplays();
         
         if (hasExternal) {
           // Iniciar apresentação externa
-          final success = await _presentationManager!.startExternalPresentation();
+          final success = await null /* _presentationManager migrado */!.startExternalPresentation();
           
           if (success) {
             // Atualizar conteúdo na apresentação externa
-            await _presentationManager!.updatePresentationContent(item);
+            await null /* _presentationManager migrado */!.updatePresentationContent(item);
             debugPrint('📱 Apresentação externa iniciada com sucesso');
           } else {
             debugPrint('📱 Falhou ao iniciar apresentação externa - usando fallback');
@@ -194,7 +194,7 @@ class DualScreenService extends ChangeNotifier {
     _currentSlideIndex = 0;
     
     // Parar reprodução de mídia se houver
-    _mediaPlaybackService?.stop();
+    null /* _mediaPlaybackService migrado */?.stop();
     
     // Parar apresentação externa se ativa
     await _stopExternalPresentation();
@@ -208,8 +208,8 @@ class DualScreenService extends ChangeNotifier {
   /// Para apresentação externa
   Future<void> _stopExternalPresentation() async {
     try {
-      if (_presentationManager?.isExternalPresentationActive == true) {
-        await _presentationManager!.stopExternalPresentation();
+      if (null /* _presentationManager migrado */?.isExternalPresentationActive == true) {
+        await null /* _presentationManager migrado */!.stopExternalPresentation();
         debugPrint('📱 Apresentação externa parada');
       }
     } catch (e) {
@@ -233,8 +233,8 @@ class DualScreenService extends ChangeNotifier {
   /// Aplica tela preta na apresentação externa
   Future<void> _applyBlackScreenToExternal() async {
     try {
-      if (_presentationManager?.isExternalPresentationActive == true) {
-        await _presentationManager!.setBlackScreen(_isBlackScreenActive);
+      if (null /* _presentationManager migrado */?.isExternalPresentationActive == true) {
+        await null /* _presentationManager migrado */!.setBlackScreen(_isBlackScreenActive);
       }
     } catch (e) {
       debugPrint('📱 Erro ao aplicar tela preta externa: $e');
@@ -337,29 +337,29 @@ class DualScreenService extends ChangeNotifier {
 
   /// Configura mídia se o item de apresentação for de mídia
   void _setupMediaIfNeeded(PresentationItem item) {
-    if (_mediaPlaybackService == null) return;
+    if (null /* _mediaPlaybackService migrado */ == null) return;
     
     final mediaItem = MediaUtils.createMediaItemFromPresentation(item);
     if (mediaItem != null) {
-      _mediaPlaybackService!.setCurrentMedia(mediaItem);
+      null /* _mediaPlaybackService migrado */!.setCurrentMedia(mediaItem);
     }
   }
 
   /// Controles de mídia para integração com controles de apresentação
   Future<void> playMedia() async {
-    await _mediaPlaybackService?.play();
+    await null /* _mediaPlaybackService migrado */?.play();
   }
 
   Future<void> pauseMedia() async {
-    await _mediaPlaybackService?.pause();
+    await null /* _mediaPlaybackService migrado */?.pause();
   }
 
   Future<void> stopMedia() async {
-    await _mediaPlaybackService?.stop();
+    await null /* _mediaPlaybackService migrado */?.stop();
   }
 
   Future<void> toggleMediaPlayPause() async {
-    await _mediaPlaybackService?.togglePlayPause();
+    await null /* _mediaPlaybackService migrado */?.togglePlayPause();
   }
 
   /// Verifica se o item atual é de mídia
@@ -370,10 +370,10 @@ class DualScreenService extends ChangeNotifier {
   }
 
   /// Verifica se a mídia está reproduzindo
-  bool get isMediaPlaying => _mediaPlaybackService?.isPlaying ?? false;
+  bool get isMediaPlaying => null /* _mediaPlaybackService migrado */?.isPlaying ?? false;
 
   /// Verifica se há mídia carregada
-  bool get hasCurrentMedia => _mediaPlaybackService?.hasMedia ?? false;
+  bool get hasCurrentMedia => null /* _mediaPlaybackService migrado */?.hasMedia ?? false;
 
   /// Transmite estado atual da apresentação
   void _broadcastPresentationState() {
@@ -411,18 +411,18 @@ class DualScreenService extends ChangeNotifier {
   }
 
   /// Verificar se apresentação externa está disponível
-  bool get hasExternalDisplay => _presentationManager?.hasExternalDisplay ?? false;
+  bool get hasExternalDisplay => null /* _presentationManager migrado */?.hasExternalDisplay ?? false;
   
   /// Verificar se apresentação externa está ativa
-  bool get isExternalPresentationActive => _presentationManager?.isExternalPresentationActive ?? false;
+  bool get isExternalPresentationActive => null /* _presentationManager migrado */?.isExternalPresentationActive ?? false;
   
   /// Obter informações do display externo
-  String? get externalDisplayName => _presentationManager?.activeDisplayName;
+  String? get externalDisplayName => null /* _presentationManager migrado */?.activeDisplayName;
   
   /// Forçar atualização do conteúdo na apresentação externa
   Future<void> refreshExternalPresentation() async {
-    if (_currentItem != null && _presentationManager?.isExternalPresentationActive == true) {
-      await _presentationManager!.updatePresentationContent(_currentItem!);
+    if (_currentItem != null && null /* _presentationManager migrado */?.isExternalPresentationActive == true) {
+      await null /* _presentationManager migrado */!.updatePresentationContent(_currentItem!);
     }
   }
   

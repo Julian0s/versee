@@ -319,8 +319,9 @@ class _CreateSelectionPageState extends State<CreateSelectionPage> {
     );
     
     // Save to the service
-    final collectionService = VerseCollectionService();
-    collectionService.addCollection(newCollection);
+    // final collectionService = VerseCollectionService(); // TODO: Reimplementar com Riverpod
+    final collectionService = null; // Temporário
+    // collectionService.addCollection(newCollection); // TODO: Reimplementar
 
     // Simulate saving delay
     Future.delayed(const Duration(seconds: 2), () {

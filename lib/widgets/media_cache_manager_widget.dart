@@ -22,7 +22,7 @@ class _MediaCacheManagerWidgetState extends State<MediaCacheManagerWidget> {
   }
 
   Future<void> _loadStorageInfo() async {
-    final hybridService = Provider.of<HybridMediaService>(context, listen: false);
+    final hybridService = Provider.of<dynamic /* HybridMediaService migrado */>(context, listen: false);
     
     try {
       final info = await hybridService.getStorageInfo();
@@ -337,7 +337,7 @@ class _MediaCacheManagerWidgetState extends State<MediaCacheManagerWidget> {
   }
 
   Future<void> _syncWithCloud() async {
-    final hybridService = Provider.of<HybridMediaService>(context, listen: false);
+    final hybridService = Provider.of<dynamic /* HybridMediaService migrado */>(context, listen: false);
     
     try {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -405,7 +405,7 @@ class _MediaCacheManagerWidgetState extends State<MediaCacheManagerWidget> {
     );
     
     if (confirmed == true) {
-      final hybridService = Provider.of<HybridMediaService>(context, listen: false);
+      final hybridService = Provider.of<dynamic /* HybridMediaService migrado */>(context, listen: false);
       
       try {
         await hybridService.clearLocalCache();

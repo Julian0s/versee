@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as provider;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:versee/providers/riverpod_providers.dart';
 import 'package:versee/models/media_models.dart';
@@ -60,8 +60,8 @@ class _MediaPageState extends ConsumerState<MediaPage> with TickerProviderStateM
     final shouldProceed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(strings.cleanupInvalidFiles),
-        content: Text(strings.cleanupDescription),
+        title: Text('Cleanup Invalid Files'), // TODO: Add to localization
+        content: Text('This will remove invalid media files'), // TODO: Add to localization
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -69,7 +69,7 @@ class _MediaPageState extends ConsumerState<MediaPage> with TickerProviderStateM
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(strings.continue_),
+            child: Text('Continue'), // TODO: Add to localization
           ),
         ],
       ),
@@ -94,7 +94,7 @@ class _MediaPageState extends ConsumerState<MediaPage> with TickerProviderStateM
     );
 
     try {
-      final mediaService = Provider.of<MediaService>(context, listen: false);
+      final mediaService = provider.Provider.of<MediaService>(context, listen: false);
       final removedCount = await mediaService.validateAndCleanupInvalidItems();
 
       if (context.mounted) {
@@ -125,7 +125,7 @@ class _MediaPageState extends ConsumerState<MediaPage> with TickerProviderStateM
     );
 
     try {
-      final mediaService = Provider.of<MediaService>(context, listen: false);
+      final mediaService = provider.Provider.of<MediaService>(context, listen: false);
       await mediaService.forceSyncAll();
 
       if (context.mounted) {
@@ -225,7 +225,7 @@ class _MediaPageState extends ConsumerState<MediaPage> with TickerProviderStateM
         },
       );
 
-      final mediaService = Provider.of<MediaService>(context, listen: false);
+      final mediaService = provider.Provider.of<MediaService>(context, listen: false);
       List<MediaItem> importedItems = [];
 
       switch (mediaType) {
@@ -327,7 +327,7 @@ class _MediaPageState extends ConsumerState<MediaPage> with TickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<LanguageService>(
+    return provider.Consumer<LanguageService>(
       builder: (context, languageService, child) {
         final strings = languageService.strings;
         return Scaffold(
@@ -435,7 +435,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
                   children: [
                     const CircularProgressIndicator(),
                     const SizedBox(height: 16),
-                    Consumer<LanguageService>(
+                    provider.Consumer<LanguageService>(
                       builder: (context, languageService, child) {
                         return Text(
                           languageService.strings.importingFiles,
@@ -454,7 +454,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
   }
 
   String _getMediaTypeName() {
-    final strings = Provider.of<LanguageService>(context, listen: false).strings;
+    final strings = provider.Provider.of<LanguageService>(context, listen: false).strings;
     switch (widget.mediaType) {
       case MediaContentType.audio:
         return strings.audio;
@@ -466,7 +466,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
   }
 
   String _getAddButtonText() {
-    final strings = Provider.of<LanguageService>(context, listen: false).strings;
+    final strings = provider.Provider.of<LanguageService>(context, listen: false).strings;
     switch (widget.mediaType) {
       case MediaContentType.audio:
         return strings.addAudio;
@@ -541,7 +541,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
   }
 
   Widget _buildMediaList(BuildContext context) {
-    return Consumer<MediaService>(
+    return provider.Consumer<MediaService>(
       builder: (context, mediaService, child) {
         // Usar itens filtrados se disponível, senão usar todos os itens
         final allItems = mediaService.getMediaItemsByType(widget.mediaType);
@@ -584,7 +584,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
                       .withValues(alpha: 0.4),
                 ),
                 const SizedBox(height: 16),
-                Consumer<LanguageService>(
+                provider.Consumer<LanguageService>(
                   builder: (context, languageService, child) {
                     String emptyMessage;
                     String addMessage;
@@ -660,7 +660,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
   }
 
   void _showAddMediaDialog(BuildContext context) {
-    final languageService = Provider.of<LanguageService>(context, listen: false);
+    final languageService = provider.Provider.of<LanguageService>(context, listen: false);
     final strings = languageService.strings;
     
     showDialog(
@@ -699,7 +699,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
     debugPrint('===== _importFiles CHAMADO =====');
     debugPrint('MediaType: ${mediaType.name}');
     
-    final mediaService = Provider.of<MediaService>(context, listen: false);
+    final mediaService = provider.Provider.of<MediaService>(context, listen: false);
     debugPrint('MediaService obtido: $mediaService');
 
     setState(() {
@@ -770,7 +770,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
             'Tente novamente com arquivos menores ou uma conexão melhor';
       } else if (errorDetails.contains('No files selected') ||
           errorDetails.contains('Nenhum arquivo')) {
-        final languageService = Provider.of<LanguageService>(context, listen: false);
+        final languageService = provider.Provider.of<LanguageService>(context, listen: false);
         errorMessage = languageService.strings.noFileSelected;
         errorDetails = 'Selecione os arquivos que deseja importar';
       } else if (errorDetails.contains('não autenticado')) {
@@ -821,7 +821,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
   }
 
   Future<void> _deleteMediaItem(BuildContext context, MediaItem item) async {
-    final languageService = Provider.of<LanguageService>(context, listen: false);
+    final languageService = provider.Provider.of<LanguageService>(context, listen: false);
     final strings = languageService.strings;
     
     final shouldDelete = await showDialog<bool>(
@@ -866,7 +866,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
           ),
         );
 
-        final mediaService = Provider.of<MediaService>(context, listen: false);
+        final mediaService = provider.Provider.of<MediaService>(context, listen: false);
         final success = await mediaService.deleteMediaItem(item.id);
 
         if (context.mounted) {
@@ -884,7 +884,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
   }
 
   Future<void> _editMediaTitle(BuildContext context, MediaItem item) async {
-    final languageService = Provider.of<LanguageService>(context, listen: false);
+    final languageService = provider.Provider.of<LanguageService>(context, listen: false);
     final strings = languageService.strings;
     final titleController = TextEditingController(text: item.title);
 
@@ -938,7 +938,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
           ),
         );
 
-        final mediaService = Provider.of<MediaService>(context, listen: false);
+        final mediaService = provider.Provider.of<MediaService>(context, listen: false);
         final success =
             await mediaService.updateMediaItemTitle(item.id, newTitle);
 
@@ -988,14 +988,14 @@ class _MediaTabContentState extends State<MediaTabContent> {
           ),
         );
 
-        final mediaService = Provider.of<MediaService>(context, listen: false);
+        final mediaService = provider.Provider.of<MediaService>(context, listen: false);
         final success = await mediaService.updateMediaItemCategory(item.id, selectedCategoryId);
 
         if (context.mounted) {
           Navigator.of(context).pop(); // Close loading dialog
 
           if (success) {
-            final languageService = Provider.of<LanguageService>(context, listen: false);
+            final languageService = provider.Provider.of<LanguageService>(context, listen: false);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(languageService.strings.categoryUpdatedSuccess),
@@ -1004,7 +1004,7 @@ class _MediaTabContentState extends State<MediaTabContent> {
               ),
             );
           } else {
-            final languageService = Provider.of<LanguageService>(context, listen: false);
+            final languageService = provider.Provider.of<LanguageService>(context, listen: false);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(languageService.strings.errorUpdatingCategory),
@@ -1091,7 +1091,7 @@ class MediaListItem extends StatelessWidget {
             if (mediaItem.description != null &&
                 mediaItem.description!.isNotEmpty) ...[
               const SizedBox(height: 2),
-              Consumer<LanguageService>(
+              provider.Consumer<LanguageService>(
                 builder: (context, languageService, child) {
                   return Text(
                     _MediaTabContentState.getLocalizedDescription(mediaItem, languageService),
@@ -1113,7 +1113,7 @@ class MediaListItem extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Play/View button
-            Consumer<LanguageService>(
+            provider.Consumer<LanguageService>(
               builder: (context, languageService, child) {
                 return IconButton(
                   icon: Icon(
@@ -1127,7 +1127,7 @@ class MediaListItem extends StatelessWidget {
               },
             ),
             // Menu button
-            Consumer<LanguageService>(
+            provider.Consumer<LanguageService>(
               builder: (context, languageService, child) {
                 final strings = languageService.strings;
                 return PopupMenuButton<String>(
@@ -1396,7 +1396,7 @@ class _CategorySelectionDialogState extends State<CategorySelectionDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<LanguageService>(
+    return provider.Consumer<LanguageService>(
       builder: (context, languageService, child) {
         return AlertDialog(
           title: Text(languageService.strings.selectCategory),

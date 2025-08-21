@@ -35,9 +35,9 @@ class LanguageSelectorRiverpod extends ConsumerWidget {
 
   /// Mostra o diálogo de seleção de idioma usando Riverpod
   void _showLanguageDialog(BuildContext context, WidgetRef ref) {
-    // Ainda precisamos usar Provider para UserSettingsService
+    // Ainda precisamos usar Provider para dynamic /* UserSettingsService migrado */
     // até que seja migrado para Riverpod
-    final userSettingsService = provider.Provider.of<UserSettingsService>(context, listen: false);
+    final userSettingsService = provider.Provider.of<dynamic /* UserSettingsService migrado */>(context, listen: false);
     
     showDialog(
       context: context,

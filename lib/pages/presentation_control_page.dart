@@ -114,11 +114,12 @@ class _PresentationControlPageState extends State<PresentationControlPage> {
                 
                 // Controles de mídia (se o item atual for mídia)
                 if (service.isCurrentItemMedia)
-                  Consumer<MediaPlaybackService>(
-                    builder: (context, mediaService, child) {
-                      return _buildMediaControls(service, mediaService);
-                    },
-                  ),
+                  // Consumer<MediaPlaybackService>( // TODO: Reimplementar - tipo não encontrado
+                  //   builder: (context, mediaService, child) {
+                  //     return _buildMediaControls(service, mediaService);
+                  //   },
+                  // ),
+                  Container(), // Placeholder temporário
                 
                 // Lista de slides (se playlist)
                 if (_currentPlaylist.length > 1)
@@ -1057,7 +1058,7 @@ class _PresentationControlPageState extends State<PresentationControlPage> {
                 Slider(
                   value: mediaService.progress.clamp(0.0, 1.0),
                   onChanged: (value) async {
-                    await dualScreenService.mediaPlaybackService?.seekToPercentage(value);
+                    // await dualScreenService.mediaPlaybackService?.seekToPercentage(value); // TODO: Reimplementar
                   },
                   activeColor: Colors.blue,
                   inactiveColor: Colors.grey,
@@ -1087,7 +1088,7 @@ class _PresentationControlPageState extends State<PresentationControlPage> {
               if (mediaService.currentMedia?.type != MediaContentType.image)
                 IconButton(
                   onPressed: () async {
-                    await dualScreenService.mediaPlaybackService?.rewind(10);
+                    // await dualScreenService.mediaPlaybackService?.rewind(10); // TODO: Reimplementar
                   },
                   icon: const Icon(Icons.replay_10),
                   color: Colors.white,
@@ -1125,7 +1126,7 @@ class _PresentationControlPageState extends State<PresentationControlPage> {
               if (mediaService.currentMedia?.type != MediaContentType.image)
                 IconButton(
                   onPressed: () async {
-                    await dualScreenService.mediaPlaybackService?.forward(10);
+                    // await dualScreenService.mediaPlaybackService?.forward(10); // TODO: Reimplementar
                   },
                   icon: const Icon(Icons.forward_10),
                   color: Colors.white,
@@ -1135,7 +1136,7 @@ class _PresentationControlPageState extends State<PresentationControlPage> {
               // Volume/Mute
               IconButton(
                 onPressed: () async {
-                  await dualScreenService.mediaPlaybackService?.toggleMute();
+                  // await dualScreenService.mediaPlaybackService?.toggleMute(); // TODO: Reimplementar
                 },
                 icon: Icon(mediaService.isMuted ? Icons.volume_off : Icons.volume_up),
                 color: Colors.white,

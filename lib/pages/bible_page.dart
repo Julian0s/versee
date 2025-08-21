@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as provider;
 import 'package:versee/pages/chapter_list_page.dart';
 import 'package:versee/pages/slide_view_page.dart';
 import 'package:versee/pages/presenter_page.dart';
@@ -76,10 +76,10 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
   /// Carrega a versão da Bíblia salva nas configurações
   Future<void> _loadSavedBibleVersion() async {
     // final userSettings = UserSettingsService(); // MIGRADO
-    await userSettings.loadSettings();
-    setState(() {
-      _selectedVersion = userSettings.selectedBibleVersion;
-    });
+    // await userSettings.loadSettings(); // TODO: Reimplementar com Riverpod
+    // setState(() {
+    //   _selectedVersion = userSettings.selectedBibleVersion;
+    // }); // TODO: Reimplementar com Riverpod
     debugPrint('✅ Versão da Bíblia carregada: $_selectedVersion');
   }
 
@@ -634,6 +634,11 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
 
         // Saved verse collections list
         Expanded(
+          // TEMPORARIAMENTE COMENTADO - VerseCollectionService migrado
+          child: Container(
+            child: Text('Collections migrado para Riverpod'),
+          ),
+          /*
           child: _collectionService.collections.isEmpty
               ? _buildEmptyCollectionState()
               : ListView.builder(
@@ -651,7 +656,7 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
                     );
                   },
                 ),
-        ),
+          */),
       ],
     );
   }
@@ -668,7 +673,7 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
                 Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
           ),
           const SizedBox(height: 16),
-          Consumer<LanguageService>(
+          provider.Consumer<LanguageService>(
             builder: (context, languageService, child) {
               return Text(
                 languageService.strings.noSlidesSaved,
@@ -758,7 +763,7 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
         if (results.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Consumer<LanguageService>(
+              content: provider.Consumer<LanguageService>(
                 builder: (context, languageService, child) {
                   return Text(languageService.strings.noResultsForQuery(query));
                 },
@@ -878,7 +883,7 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
                 title: const Text('Data (mais recente)'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  _collectionService.sortCollections(SortCriteria.dateNewest);
+                  // _collectionService.sortCollections // TODO: Reimplementar(SortCriteria.dateNewest);
                 },
               ),
               ListTile(
@@ -886,7 +891,7 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
                 title: const Text('Data (mais antigo)'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  _collectionService.sortCollections(SortCriteria.dateOldest);
+                  // _collectionService.sortCollections // TODO: Reimplementar(SortCriteria.dateOldest);
                 },
               ),
               ListTile(
@@ -894,7 +899,7 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
                 title: const Text('Ordem bíblica'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  _collectionService.sortCollections(SortCriteria.biblical);
+                  // _collectionService.sortCollections // TODO: Reimplementar(SortCriteria.biblical);
                 },
               ),
               ListTile(
@@ -902,7 +907,7 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
                 title: const Text('Alfabética'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  _collectionService.sortCollections(SortCriteria.alphabetical);
+                  // _collectionService.sortCollections // TODO: Reimplementar(SortCriteria.alphabetical);
                 },
               ),
             ],
@@ -981,7 +986,7 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
             ),
             TextButton(
               onPressed: () {
-                _collectionService.removeCollection(collection.id);
+                // _collectionService.removeCollection // TODO: Reimplementar(collection.id);
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

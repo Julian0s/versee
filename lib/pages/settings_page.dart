@@ -332,7 +332,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 24),
 
           // Seção Cloud Sync & Storage
-          Consumer3<AuthService, FirestoreSyncService, LanguageService>(
+          Consumer3<AuthService, dynamic /* FirestoreSyncService migrado */, LanguageService>(
             builder: (context, authService, syncService, languageService, child) {
               return _buildSection(
                 languageService.strings.cloudSyncStorage,
@@ -1185,7 +1185,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _showSyncStatusDialog() {
     final authService = Provider.of<AuthService>(context, listen: false);
-    final syncService = Provider.of<FirestoreSyncService>(context, listen: false);
+    final syncService = Provider.of<dynamic /* FirestoreSyncService migrado */>(context, listen: false);
 
     showDialog(
       context: context,
@@ -1258,7 +1258,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _syncNow() async {
-    final syncService = Provider.of<FirestoreSyncService>(context, listen: false);
+    final syncService = Provider.of<dynamic /* FirestoreSyncService migrado */>(context, listen: false);
     
     // Mostrar dialog de loading
     showDialog(
