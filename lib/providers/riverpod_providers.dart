@@ -2922,6 +2922,211 @@ final upgradeStorageSuggestionProvider = Provider<String?>((ref) {
   return notifier.getUpgradeSuggestion();
 });
 
+/// =============================================================================
+/// 12. MEDIA SYNC SERVICE → mediaSyncProvider
+/// =============================================================================
+
+@immutable
+class MediaSyncState {
+  final bool isSyncing;
+  final double masterTimestamp;
+  final String? masterDisplayId;
+  final Map<String, double> displayLatencies;
+  final Map<String, DateTime> lastHeartbeats;
+  final String? errorMessage;
+
+  const MediaSyncState({
+    this.isSyncing = false,
+    this.masterTimestamp = 0.0,
+    this.masterDisplayId,
+    this.displayLatencies = const {},
+    this.lastHeartbeats = const {},
+    this.errorMessage,
+  });
+
+  MediaSyncState copyWith({
+    bool? isSyncing,
+    double? masterTimestamp,
+    String? masterDisplayId,
+    Map<String, double>? displayLatencies,
+    Map<String, DateTime>? lastHeartbeats,
+    String? errorMessage,
+  }) {
+    return MediaSyncState(
+      isSyncing: isSyncing ?? this.isSyncing,
+      masterTimestamp: masterTimestamp ?? this.masterTimestamp,
+      masterDisplayId: masterDisplayId ?? this.masterDisplayId,
+      displayLatencies: displayLatencies ?? this.displayLatencies,
+      lastHeartbeats: lastHeartbeats ?? this.lastHeartbeats,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+}
+
+class MediaSyncNotifier extends StateNotifier<MediaSyncState> {
+  MediaSyncNotifier() : super(const MediaSyncState());
+
+  /// Inicia a sincronização de mídia
+  Future<void> startSync() async {
+    if (state.isSyncing) {
+      debugPrint('🔄 [RIVERPOD] MediaSync já está sincronizando');
+      return;
+    }
+
+    debugPrint('🔄 [RIVERPOD] Iniciando sincronização de mídia');
+    
+    state = state.copyWith(isSyncing: true, errorMessage: null);
+    _syncWithProviderSystem();
+
+    try {
+      // TODO: Implementar lógica real de sincronização
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      state = state.copyWith(
+        masterTimestamp: DateTime.now().millisecondsSinceEpoch.toDouble(),
+        masterDisplayId: 'main_display',
+      );
+      _syncWithProviderSystem();
+      
+      debugPrint('🔄 [RIVERPOD] Sincronização iniciada');
+    } catch (e) {
+      state = state.copyWith(
+        isSyncing: false,
+        errorMessage: e.toString(),
+      );
+      _syncWithProviderSystem();
+      debugPrint('🔄 [RIVERPOD] Erro ao iniciar sincronização: $e');
+    }
+  }
+
+  /// Para a sincronização de mídia
+  Future<void> stopSync() async {
+    debugPrint('🔄 [RIVERPOD] Parando sincronização de mídia');
+    
+    try {
+      // TODO: Implementar parada real da sincronização
+      await Future.delayed(const Duration(milliseconds: 200));
+      
+      state = state.copyWith(
+        isSyncing: false,
+        masterTimestamp: 0.0,
+        masterDisplayId: null,
+        displayLatencies: {},
+        lastHeartbeats: {},
+      );
+      _syncWithProviderSystem();
+      
+      debugPrint('🔄 [RIVERPOD] Sincronização parada');
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      _syncWithProviderSystem();
+      debugPrint('🔄 [RIVERPOD] Erro ao parar sincronização: $e');
+    }
+  }
+
+  /// Atualiza latências dos displays
+  void updateDisplayLatencies(Map<String, double> latencies) {
+    debugPrint('🔄 [RIVERPOD] Atualizando latências dos displays');
+    
+    state = state.copyWith(displayLatencies: Map.from(latencies));
+    _syncWithProviderSystem();
+  }
+
+  /// Atualiza heartbeats dos displays
+  void updateHeartbeats(Map<String, DateTime> heartbeats) {
+    debugPrint('🔄 [RIVERPOD] Atualizando heartbeats dos displays');
+    
+    state = state.copyWith(lastHeartbeats: Map.from(heartbeats));
+    _syncWithProviderSystem();
+  }
+
+  /// Define o display master
+  void setMasterDisplay(String displayId) {
+    debugPrint('🔄 [RIVERPOD] Definindo display master: $displayId');
+    
+    state = state.copyWith(masterDisplayId: displayId);
+    _syncWithProviderSystem();
+  }
+
+  /// Atualiza timestamp master
+  void updateMasterTimestamp(double timestamp) {
+    state = state.copyWith(masterTimestamp: timestamp);
+    _syncWithProviderSystem();
+  }
+
+  /// Sincroniza displays
+  Future<void> syncDisplays() async {
+    if (!state.isSyncing) {
+      debugPrint('🔄 [RIVERPOD] Sincronização não está ativa');
+      return;
+    }
+
+    debugPrint('🔄 [RIVERPOD] Sincronizando displays');
+    
+    try {
+      // TODO: Implementar sincronização real dos displays
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      final now = DateTime.now().millisecondsSinceEpoch.toDouble();
+      state = state.copyWith(masterTimestamp: now);
+      _syncWithProviderSystem();
+      
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      _syncWithProviderSystem();
+      debugPrint('🔄 [RIVERPOD] Erro na sincronização: $e');
+    }
+  }
+
+  /// Sincroniza o estado do Riverpod com o sistema Provider legado
+  /// Isso faz com que todos os arquivos que usam Provider.of<MediaSyncService> reajam
+  void _syncWithProviderSystem() {
+    final globalMediaSyncService = MediaSyncService.globalInstance;
+    if (globalMediaSyncService != null) {
+      debugPrint('🔗 [BRIDGE] Sincronizando Riverpod → Provider (MediaSync)');
+      globalMediaSyncService.syncWithRiverpod(
+        state.isSyncing,
+        state.masterTimestamp,
+        state.masterDisplayId,
+        state.displayLatencies,
+        state.lastHeartbeats,
+        state.errorMessage,
+      );
+      debugPrint('🔗 [BRIDGE] Sincronização completa');
+    }
+  }
+}
+
+/// Provider principal da sincronização de mídia
+final mediaSyncProvider = StateNotifierProvider<MediaSyncNotifier, MediaSyncState>((ref) {
+  return MediaSyncNotifier();
+});
+
+/// Providers convenientes
+final isSyncingProvider = Provider<bool>((ref) {
+  return ref.watch(mediaSyncProvider).isSyncing;
+});
+
+final masterTimestampProvider = Provider<double>((ref) {
+  return ref.watch(mediaSyncProvider).masterTimestamp;
+});
+
+final masterDisplayIdProvider = Provider<String?>((ref) {
+  return ref.watch(mediaSyncProvider).masterDisplayId;
+});
+
+final displayLatenciesProvider = Provider<Map<String, double>>((ref) {
+  return ref.watch(mediaSyncProvider).displayLatencies;
+});
+
+final lastHeartbeatsProvider = Provider<Map<String, DateTime>>((ref) {
+  return ref.watch(mediaSyncProvider).lastHeartbeats;
+});
+
+final mediaSyncErrorProvider = Provider<String?>((ref) {
+  return ref.watch(mediaSyncProvider).errorMessage;
+});
+
 // -----------------------------------------------------------------------------
 // Futuros Providers a serem migrados
 // -----------------------------------------------------------------------------

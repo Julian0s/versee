@@ -5,6 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:versee/services/media_playback_service.dart';
 import 'package:versee/services/display_manager.dart';
 import 'package:versee/services/language_service.dart';
+import 'package:versee/providers/riverpod_providers.dart';
+
+// Instância global para bridge híbrida
+MediaSyncService? _globalMediaSyncService;
 
 /// Service responsible for synchronizing media playback across multiple displays
 /// Ensures that video/audio content is perfectly synchronized between displays
@@ -15,6 +19,11 @@ class MediaSyncService extends ChangeNotifier {
   
   Timer? _syncTimer;
   Timer? _heartbeatTimer;
+  
+  // Construtor que configura a instância global
+  MediaSyncService() {
+    _globalMediaSyncService = this;
+  }
   
   // Sync state
   bool _isSyncing = false;
@@ -515,12 +524,37 @@ class MediaSyncService extends ChangeNotifier {
     }
   }
   
+  // Getter estático para acesso global
+  static MediaSyncService? get globalInstance => _globalMediaSyncService;
+  
+  // Método de sincronização com Riverpod
+  void syncWithRiverpod(MediaSyncState state) {
+    if (_isSyncing != state.isSyncing ||
+        _masterTimestamp != state.masterTimestamp ||
+        _masterDisplayId != state.masterDisplayId ||
+        !mapEquals(_displayLatencies, state.displayLatencies) ||
+        !mapEquals(_lastHeartbeats, state.lastHeartbeats)) {
+      
+      _isSyncing = state.isSyncing;
+      _masterTimestamp = state.masterTimestamp;
+      _masterDisplayId = state.masterDisplayId;
+      _displayLatencies = Map<String, double>.from(state.displayLatencies);
+      _lastHeartbeats = Map<String, DateTime>.from(state.lastHeartbeats);
+      
+      notifyListeners();
+    }
+  }
+  
   @override
   void dispose() {
     debugLog('🧹 Disposing MediaSyncService');
     
     _stopSyncMonitoring();
     _heartbeatTimer?.cancel();
+    
+    if (_globalMediaSyncService == this) {
+      _globalMediaSyncService = null;
+    }
     
     super.dispose();
   }

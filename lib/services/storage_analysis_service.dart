@@ -7,12 +7,20 @@ import 'package:versee/services/playlist_service.dart';
 import 'package:versee/services/auth_service.dart';
 import 'package:path_provider/path_provider.dart';
 
+/// Instância global do StorageAnalysisService para bridge híbrida com Riverpod
+StorageAnalysisService? _globalStorageAnalysisService;
+
 class StorageAnalysisService with ChangeNotifier {
   static const String _storageDataKey = 'storage_analysis_cache';
   
   StorageUsageData? _currentUsage;
   bool _isAnalyzing = false;
   String? _errorMessage;
+  
+  StorageAnalysisService() {
+    // Registrar esta instância globalmente para bridge híbrida
+    _globalStorageAnalysisService = this;
+  }
 
   StorageUsageData? get currentUsage => _currentUsage;
   bool get isAnalyzing => _isAnalyzing;
@@ -524,6 +532,19 @@ class StorageAnalysisService with ChangeNotifier {
     if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
+  
+  /// Sincroniza com Riverpod - usado para bridge híbrida
+  /// Este método é chamado quando o Riverpod muda o estado
+  void syncWithRiverpod(StorageUsageData? newUsage, bool analyzing, String? error) {
+    debugPrint('🔄 [PROVIDER] Sincronizando com Riverpod');
+    _currentUsage = newUsage;
+    _isAnalyzing = analyzing;
+    _errorMessage = error;
+    notifyListeners(); // Isso fará todos os Consumer<StorageAnalysisService> reagirem
+  }
+  
+  /// Função estática para acesso global à instância (bridge híbrida)
+  static StorageAnalysisService? get globalInstance => _globalStorageAnalysisService;
 }
 
 enum StorageCategory {

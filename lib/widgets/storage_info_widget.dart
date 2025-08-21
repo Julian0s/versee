@@ -277,14 +277,18 @@ class _StorageInfoWidgetState extends State<StorageInfoWidget> {
 
   Future<void> _performCleanup() async {
     try {
-      final mediaService = Provider.of<MediaService>(context, listen: false);
-      await mediaService.cleanupUnusedFiles();
+      // TODO: Implementar cleanupUnusedFiles no MediaService
+      // final mediaService = Provider.of<MediaService>(context, listen: false);
+      // await mediaService.cleanupUnusedFiles();
+      
+      // Por enquanto, apenas simula a limpeza
+      await Future.delayed(const Duration(seconds: 1));
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Limpeza concluída com sucesso!'),
-            backgroundColor: Colors.green,
+            content: Text('Função de limpeza em desenvolvimento'),
+            backgroundColor: Colors.orange,
           ),
         );
         _loadStorageInfo(); // Refresh data
