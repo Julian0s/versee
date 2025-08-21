@@ -5,6 +5,9 @@ import 'package:versee/models/note_models.dart';
 import 'package:versee/services/firebase_manager.dart';
 import 'package:versee/firestore/firestore_data_schema.dart';
 
+/// Instância global do NotesService para bridge híbrida com Riverpod
+NotesService? _globalNotesService;
+
 /// Serviço para gerenciar notas e lyrics no Firestore
 class NotesService extends ChangeNotifier {
   final FirebaseManager _firebaseManager = FirebaseManager();
@@ -22,6 +25,11 @@ class NotesService extends ChangeNotifier {
 
   List<NoteItem> get lyrics => _notesCache['lyrics'] ?? [];
   List<NoteItem> get notes => _notesCache['notes'] ?? [];
+
+  NotesService() {
+    // Registrar esta instância globalmente para bridge híbrida
+    _globalNotesService = this;
+  }
 
   @override
   void dispose() {
@@ -819,4 +827,25 @@ class NotesService extends ChangeNotifier {
       debugPrint('❌ Erro na limpeza: $e');
     }
   }
+
+  /// Sincroniza com Riverpod - usado para bridge híbrida
+  /// Este método é chamado quando o Riverpod muda o estado
+  void syncWithRiverpod(Map<String, List<dynamic>> newCache, bool initialized, bool initializing, String? error) {
+    debugPrint('🔄 [PROVIDER] Sincronizando com Riverpod (Notes)');
+    
+    // Atualizar cache com dados do Riverpod
+    _notesCache.clear();
+    newCache.forEach((key, value) {
+      _notesCache[key] = value.cast<NoteItem>();
+    });
+    
+    _isInitialized = initialized;
+    _isInitializing = initializing;
+    
+    // Notificar listeners para que todos os Provider.of<NotesService> reajam
+    notifyListeners();
+  }
+  
+  /// Função estática para acesso global à instância (bridge híbrida)
+  static NotesService? get globalInstance => _globalNotesService;
 }

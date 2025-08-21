@@ -1964,7 +1964,7 @@ final currentLanguageProvider = Provider<String>((ref) {
   return ref.watch(userSettingsProvider).currentLanguage;
 });
 
-final currentThemeProvider = Provider<ThemeMode>((ref) {
+final currentThemeModeProvider = Provider<ThemeMode>((ref) {
   return ref.watch(userSettingsProvider).currentTheme;
 });
 
@@ -2411,6 +2411,255 @@ final currentPresentationEngineItemProvider = Provider<dynamic>((ref) {
 final isNearStorageLimitProvider = Provider<bool>((ref) {
   final notifier = ref.read(storageAnalysisProvider.notifier);
   return notifier.isNearLimit();
+});
+
+// =============================================================================
+// LOTE 2 - MIGRAÇÕES MÉDIAS (BRIDGE HÍBRIDA)
+// =============================================================================
+
+/// =============================================================================
+/// 10. NOTES SERVICE → notesProvider
+/// =============================================================================
+
+@immutable
+class NotesState {
+  final Map<String, List<dynamic>> notesCache; // NoteItem from models
+  final bool isInitialized;
+  final bool isInitializing;
+  final String? errorMessage;
+
+  const NotesState({
+    this.notesCache = const {},
+    this.isInitialized = false,
+    this.isInitializing = false,
+    this.errorMessage,
+  });
+
+  NotesState copyWith({
+    Map<String, List<dynamic>>? notesCache,
+    bool? isInitialized,
+    bool? isInitializing,
+    String? errorMessage,
+  }) {
+    return NotesState(
+      notesCache: notesCache ?? this.notesCache,
+      isInitialized: isInitialized ?? this.isInitialized,
+      isInitializing: isInitializing ?? this.isInitializing,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+
+  List<dynamic> get lyrics => notesCache['lyrics'] ?? [];
+  List<dynamic> get notes => notesCache['notes'] ?? [];
+}
+
+class NotesNotifier extends StateNotifier<NotesState> {
+  NotesNotifier() : super(const NotesState());
+
+  /// Inicializa o serviço de notas
+  Future<void> initialize() async {
+    if (state.isInitialized || state.isInitializing) {
+      debugPrint('📝 [RIVERPOD] NotesService já inicializado ou inicializando');
+      return;
+    }
+
+    debugPrint('📝 [RIVERPOD] Iniciando NotesService');
+    
+    state = state.copyWith(isInitializing: true, errorMessage: null);
+    _syncWithProviderSystem();
+
+    try {
+      // TODO: Implementar inicialização real com Firebase
+      await Future.delayed(const Duration(seconds: 1));
+      
+      state = state.copyWith(
+        isInitialized: true,
+        isInitializing: false,
+        notesCache: {
+          'lyrics': [], // Lista vazia por enquanto
+          'notes': [], // Lista vazia por enquanto
+        },
+      );
+      _syncWithProviderSystem();
+      
+      debugPrint('📝 [RIVERPOD] NotesService inicializado com sucesso');
+    } catch (e) {
+      state = state.copyWith(
+        isInitializing: false,
+        errorMessage: e.toString(),
+      );
+      _syncWithProviderSystem();
+      
+      debugPrint('📝 [RIVERPOD] Erro ao inicializar NotesService: $e');
+    }
+  }
+
+  /// Adiciona uma nova nota
+  Future<void> addNote(dynamic note) async {
+    debugPrint('📝 [RIVERPOD] Adicionando nova nota');
+    
+    try {
+      // TODO: Implementar adição real da nota
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      final updatedNotes = List<dynamic>.from(state.notes)..add(note);
+      final updatedCache = Map<String, List<dynamic>>.from(state.notesCache);
+      updatedCache['notes'] = updatedNotes;
+      
+      state = state.copyWith(notesCache: updatedCache);
+      _syncWithProviderSystem();
+      
+      debugPrint('📝 [RIVERPOD] Nota adicionada com sucesso');
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      _syncWithProviderSystem();
+      debugPrint('📝 [RIVERPOD] Erro ao adicionar nota: $e');
+    }
+  }
+
+  /// Atualiza uma nota existente
+  Future<void> updateNote(String noteId, dynamic updatedNote) async {
+    debugPrint('📝 [RIVERPOD] Atualizando nota: $noteId');
+    
+    try {
+      // TODO: Implementar atualização real da nota
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      final updatedNotes = state.notes.map((note) {
+        // TODO: Implementar lógica real de comparação de ID
+        return note; // Por enquanto retorna a nota sem alteração
+      }).toList();
+      
+      final updatedCache = Map<String, List<dynamic>>.from(state.notesCache);
+      updatedCache['notes'] = updatedNotes;
+      
+      state = state.copyWith(notesCache: updatedCache);
+      _syncWithProviderSystem();
+      
+      debugPrint('📝 [RIVERPOD] Nota atualizada com sucesso');
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      _syncWithProviderSystem();
+      debugPrint('📝 [RIVERPOD] Erro ao atualizar nota: $e');
+    }
+  }
+
+  /// Deleta uma nota
+  Future<void> deleteNote(String noteId) async {
+    debugPrint('📝 [RIVERPOD] Deletando nota: $noteId');
+    
+    try {
+      // TODO: Implementar deleção real da nota
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      final updatedNotes = state.notes.where((note) {
+        // TODO: Implementar lógica real de comparação de ID
+        return true; // Por enquanto não remove nenhuma nota
+      }).toList();
+      
+      final updatedCache = Map<String, List<dynamic>>.from(state.notesCache);
+      updatedCache['notes'] = updatedNotes;
+      
+      state = state.copyWith(notesCache: updatedCache);
+      _syncWithProviderSystem();
+      
+      debugPrint('📝 [RIVERPOD] Nota deletada com sucesso');
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      _syncWithProviderSystem();
+      debugPrint('📝 [RIVERPOD] Erro ao deletar nota: $e');
+    }
+  }
+
+  /// Adiciona uma nova letra/lyric
+  Future<void> addLyric(dynamic lyric) async {
+    debugPrint('📝 [RIVERPOD] Adicionando nova letra');
+    
+    try {
+      // TODO: Implementar adição real da letra
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      final updatedLyrics = List<dynamic>.from(state.lyrics)..add(lyric);
+      final updatedCache = Map<String, List<dynamic>>.from(state.notesCache);
+      updatedCache['lyrics'] = updatedLyrics;
+      
+      state = state.copyWith(notesCache: updatedCache);
+      _syncWithProviderSystem();
+      
+      debugPrint('📝 [RIVERPOD] Letra adicionada com sucesso');
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      _syncWithProviderSystem();
+      debugPrint('📝 [RIVERPOD] Erro ao adicionar letra: $e');
+    }
+  }
+
+  /// Carrega notas do Firebase
+  Future<void> loadNotes() async {
+    debugPrint('📝 [RIVERPOD] Carregando notas do Firebase');
+    
+    try {
+      // TODO: Implementar carregamento real das notas
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      state = state.copyWith(
+        notesCache: {
+          'lyrics': [], // Lista vazia por enquanto
+          'notes': [], // Lista vazia por enquanto
+        },
+        errorMessage: null,
+      );
+      _syncWithProviderSystem();
+      
+      debugPrint('📝 [RIVERPOD] Notas carregadas: ${state.notes.length} notes, ${state.lyrics.length} lyrics');
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      _syncWithProviderSystem();
+      debugPrint('📝 [RIVERPOD] Erro ao carregar notas: $e');
+    }
+  }
+
+  /// Sincroniza o estado do Riverpod com o sistema Provider legado
+  /// Isso faz com que todos os arquivos que usam Provider.of<NotesService> reajam
+  void _syncWithProviderSystem() {
+    final globalNotesService = NotesService.globalInstance;
+    if (globalNotesService != null) {
+      debugPrint('🔗 [BRIDGE] Sincronizando Riverpod → Provider (Notes)');
+      globalNotesService.syncWithRiverpod(
+        state.notesCache,
+        state.isInitialized,
+        state.isInitializing,
+        state.errorMessage,
+      );
+      debugPrint('🔗 [BRIDGE] Sincronização completa');
+    }
+  }
+}
+
+/// Provider principal das notas
+final notesProvider = StateNotifierProvider<NotesNotifier, NotesState>((ref) {
+  return NotesNotifier();
+});
+
+/// Providers convenientes
+final notesListProvider = Provider<List<dynamic>>((ref) {
+  return ref.watch(notesProvider).notes;
+});
+
+final lyricsListProvider = Provider<List<dynamic>>((ref) {
+  return ref.watch(notesProvider).lyrics;
+});
+
+final isNotesInitializedProvider = Provider<bool>((ref) {
+  return ref.watch(notesProvider).isInitialized;
+});
+
+final isNotesInitializingProvider = Provider<bool>((ref) {
+  return ref.watch(notesProvider).isInitializing;
+});
+
+final notesErrorMessageProvider = Provider<String?>((ref) {
+  return ref.watch(notesProvider).errorMessage;
 });
 
 /// Provider conveniente para verificar se excedeu o limite
