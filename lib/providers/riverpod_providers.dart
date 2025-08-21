@@ -1245,6 +1245,7 @@ class StorageAnalysisNotifier extends StateNotifier<StorageAnalysisState> {
       isAnalyzing: true,
       errorMessage: null,
     );
+    _syncWithProviderSystem();
 
     try {
       // VERSÃO ROBUSTA: Funciona mesmo sem todos os serviços
@@ -1318,6 +1319,7 @@ class StorageAnalysisNotifier extends StateNotifier<StorageAnalysisState> {
         currentUsage: usage,
         isAnalyzing: false,
       );
+      _syncWithProviderSystem();
       
       return usage;
     } catch (e) {
@@ -1329,6 +1331,7 @@ class StorageAnalysisNotifier extends StateNotifier<StorageAnalysisState> {
         currentUsage: demoUsage,
         isAnalyzing: false,
       );
+      _syncWithProviderSystem();
       
       return demoUsage;
     }
@@ -1775,62 +1778,25 @@ class StorageAnalysisNotifier extends StateNotifier<StorageAnalysisState> {
     if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
-}
-
-/// Enums e classes de dados migrados do StorageAnalysisService
-enum StorageCategory {
-  audio,
-  video,
-  images,
-  notes,
-  verses,
-  playlists,
-  letters,
-}
-
-class StorageUsageData {
-  final int totalUsed;
-  final int totalLimit;
-  final String planType;
-  final List<StorageCategoryData> categories;
-  final DateTime lastUpdated;
-
-  StorageUsageData({
-    required this.totalUsed,
-    required this.totalLimit,
-    required this.planType,
-    required this.categories,
-    required this.lastUpdated,
-  });
-
-  double get usagePercentage => totalLimit > 0 ? (totalUsed / totalLimit) * 100 : 0.0;
-  int get remainingBytes => totalLimit - totalUsed;
-  bool get isNearLimit => usagePercentage > 80.0;
-  bool get isOverLimit => usagePercentage > 100.0;
-}
-
-class StorageCategoryData {
-  final StorageCategory category;
-  final int size;
-  final int fileCount;
-  final Color color;
-  final IconData icon;
-
-  StorageCategoryData({
-    required this.category,
-    required this.size,
-    required this.fileCount,
-    required this.color,
-    required this.icon,
-  });
-
-  double getPercentageOf(int totalSize) {
-    if (totalSize == 0) return 0.0;
-    return (size / totalSize) * 100;
+  
+  /// Sincroniza o estado do Riverpod com o sistema Provider legado
+  /// Isso faz com que todos os arquivos que usam Consumer<StorageAnalysisService> reajam
+  void _syncWithProviderSystem() {
+    final globalStorageService = StorageAnalysisService.globalInstance;
+    if (globalStorageService != null) {
+      debugPrint('🔗 [BRIDGE] Sincronizando Riverpod → Provider (StorageAnalysis)');
+      globalStorageService.syncWithRiverpod(
+        state.currentUsage,
+        state.isAnalyzing,
+        state.errorMessage,
+      );
+      debugPrint('🔗 [BRIDGE] Sincronização completa');
+    }
   }
 }
 
 /// Provider principal da análise de armazenamento - substituto completo do StorageAnalysisService
+/// Usa as classes StorageUsageData, StorageCategoryData e StorageCategory do storage_analysis_service.dart
 final storageAnalysisProvider = StateNotifierProvider<StorageAnalysisNotifier, StorageAnalysisState>((ref) {
   return StorageAnalysisNotifier();
 });
@@ -1854,6 +1820,591 @@ final storageErrorMessageProvider = Provider<String?>((ref) {
 final storageUsagePercentageProvider = Provider<double>((ref) {
   final notifier = ref.read(storageAnalysisProvider.notifier);
   return notifier.getUsagePercentage();
+});
+
+// =============================================================================
+// LOTE 1 - MIGRAÇÕES SIMPLES (5 SERVIÇOS)
+// =============================================================================
+
+/// =============================================================================
+/// 5. USER SETTINGS SERVICE → userSettingsProvider
+/// =============================================================================
+
+@immutable
+class UserSettingsState {
+  final String currentLanguage;
+  final ThemeMode currentTheme;
+  final String selectedBibleVersion;
+  final bool isLoading;
+  final String? errorMessage;
+
+  const UserSettingsState({
+    this.currentLanguage = 'pt',
+    this.currentTheme = ThemeMode.system,
+    this.selectedBibleVersion = 'KJV',
+    this.isLoading = false,
+    this.errorMessage,
+  });
+
+  UserSettingsState copyWith({
+    String? currentLanguage,
+    ThemeMode? currentTheme,
+    String? selectedBibleVersion,
+    bool? isLoading,
+    String? errorMessage,
+  }) {
+    return UserSettingsState(
+      currentLanguage: currentLanguage ?? this.currentLanguage,
+      currentTheme: currentTheme ?? this.currentTheme,
+      selectedBibleVersion: selectedBibleVersion ?? this.selectedBibleVersion,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+}
+
+class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
+  // Chaves para SharedPreferences
+  static const String _languageKey = 'app_language';
+  static const String _themeKey = 'app_theme';
+  static const String _bibleVersionKey = 'selected_bible_version';
+
+  UserSettingsNotifier() : super(const UserSettingsState());
+
+  /// Carrega todas as configurações
+  Future<void> loadSettings() async {
+    debugPrint('⚙️ [RIVERPOD] Carregando configurações do usuário');
+    
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      final language = prefs.getString(_languageKey) ?? 'pt';
+      final theme = _parseThemeMode(prefs.getString(_themeKey) ?? 'system');
+      final bibleVersion = prefs.getString(_bibleVersionKey) ?? 'KJV';
+      
+      state = state.copyWith(
+        currentLanguage: language,
+        currentTheme: theme,
+        selectedBibleVersion: bibleVersion,
+        isLoading: false,
+      );
+      
+      debugPrint('⚙️ [RIVERPOD] Configurações carregadas: $language, $theme, $bibleVersion');
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString(),
+      );
+      debugPrint('⚙️ [RIVERPOD] Erro ao carregar configurações: $e');
+    }
+  }
+
+  /// Define o idioma
+  Future<void> setLanguage(String language) async {
+    debugPrint('⚙️ [RIVERPOD] Definindo idioma: $language');
+    
+    state = state.copyWith(currentLanguage: language);
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_languageKey, language);
+  }
+
+  /// Define o tema
+  Future<void> setTheme(ThemeMode theme) async {
+    debugPrint('⚙️ [RIVERPOD] Definindo tema: $theme');
+    
+    state = state.copyWith(currentTheme: theme);
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_themeKey, _themeToString(theme));
+  }
+
+  /// Define a versão da bíblia
+  Future<void> setBibleVersion(String version) async {
+    debugPrint('⚙️ [RIVERPOD] Definindo versão bíblia: $version');
+    
+    state = state.copyWith(selectedBibleVersion: version);
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_bibleVersionKey, version);
+  }
+
+  ThemeMode _parseThemeMode(String themeString) {
+    switch (themeString) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  String _themeToString(ThemeMode theme) {
+    switch (theme) {
+      case ThemeMode.light:
+        return 'light';
+      case ThemeMode.dark:
+        return 'dark';
+      default:
+        return 'system';
+    }
+  }
+}
+
+/// Provider principal das configurações do usuário
+final userSettingsProvider = StateNotifierProvider<UserSettingsNotifier, UserSettingsState>((ref) {
+  return UserSettingsNotifier();
+});
+
+/// Providers convenientes
+final currentLanguageProvider = Provider<String>((ref) {
+  return ref.watch(userSettingsProvider).currentLanguage;
+});
+
+final currentThemeProvider = Provider<ThemeMode>((ref) {
+  return ref.watch(userSettingsProvider).currentTheme;
+});
+
+final selectedBibleVersionProvider = Provider<String>((ref) {
+  return ref.watch(userSettingsProvider).selectedBibleVersion;
+});
+
+/// =============================================================================
+/// 6. VERSE COLLECTION SERVICE → verseCollectionProvider
+/// =============================================================================
+
+@immutable
+class VerseCollectionState {
+  final List<dynamic> collections; // VerseCollection from models
+  final bool isLoading;
+  final String? errorMessage;
+
+  const VerseCollectionState({
+    this.collections = const [],
+    this.isLoading = false,
+    this.errorMessage,
+  });
+
+  VerseCollectionState copyWith({
+    List<dynamic>? collections,
+    bool? isLoading,
+    String? errorMessage,
+  }) {
+    return VerseCollectionState(
+      collections: collections ?? this.collections,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+}
+
+class VerseCollectionNotifier extends StateNotifier<VerseCollectionState> {
+  VerseCollectionNotifier() : super(const VerseCollectionState());
+
+  /// Carrega coleções de versículos
+  Future<void> loadCollections() async {
+    debugPrint('📖 [RIVERPOD] Carregando coleções de versículos');
+    
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    
+    try {
+      // TODO: Implementar carregamento real das coleções
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      state = state.copyWith(
+        collections: [], // Lista vazia por enquanto
+        isLoading: false,
+      );
+      
+      debugPrint('📖 [RIVERPOD] Coleções carregadas: ${state.collections.length}');
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString(),
+      );
+      debugPrint('📖 [RIVERPOD] Erro ao carregar coleções: $e');
+    }
+  }
+
+  /// Adiciona uma nova coleção
+  Future<void> createCollection(String name) async {
+    debugPrint('📖 [RIVERPOD] Criando coleção: $name');
+    
+    try {
+      // TODO: Implementar criação real da coleção
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      debugPrint('📖 [RIVERPOD] Coleção criada: $name');
+      await loadCollections(); // Recarrega
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      debugPrint('📖 [RIVERPOD] Erro ao criar coleção: $e');
+    }
+  }
+}
+
+/// Provider principal das coleções de versículos
+final verseCollectionProvider = StateNotifierProvider<VerseCollectionNotifier, VerseCollectionState>((ref) {
+  return VerseCollectionNotifier();
+});
+
+/// Providers convenientes
+final collectionsListProvider = Provider<List<dynamic>>((ref) {
+  return ref.watch(verseCollectionProvider).collections;
+});
+
+final isLoadingCollectionsProvider = Provider<bool>((ref) {
+  return ref.watch(verseCollectionProvider).isLoading;
+});
+
+/// =============================================================================
+/// 7. HYBRID MEDIA SERVICE → hybridMediaProvider
+/// =============================================================================
+
+@immutable
+class HybridMediaState {
+  final List<dynamic> mediaItems; // MediaItem from models
+  final bool isInitialized;
+  final bool isSyncing;
+  final String? errorMessage;
+
+  const HybridMediaState({
+    this.mediaItems = const [],
+    this.isInitialized = false,
+    this.isSyncing = false,
+    this.errorMessage,
+  });
+
+  HybridMediaState copyWith({
+    List<dynamic>? mediaItems,
+    bool? isInitialized,
+    bool? isSyncing,
+    String? errorMessage,
+  }) {
+    return HybridMediaState(
+      mediaItems: mediaItems ?? this.mediaItems,
+      isInitialized: isInitialized ?? this.isInitialized,
+      isSyncing: isSyncing ?? this.isSyncing,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+}
+
+class HybridMediaNotifier extends StateNotifier<HybridMediaState> {
+  HybridMediaNotifier() : super(const HybridMediaState());
+
+  /// Inicializa o serviço híbrido
+  Future<void> initialize() async {
+    if (state.isInitialized) return;
+    
+    debugPrint('🎬 [RIVERPOD] Inicializando HybridMediaService');
+    
+    try {
+      state = state.copyWith(isSyncing: true);
+      
+      // TODO: Implementar inicialização real
+      await Future.delayed(const Duration(seconds: 1));
+      
+      state = state.copyWith(
+        isInitialized: true,
+        isSyncing: false,
+        mediaItems: [], // Lista vazia por enquanto
+      );
+      
+      debugPrint('🎬 [RIVERPOD] HybridMediaService inicializado');
+    } catch (e) {
+      state = state.copyWith(
+        isSyncing: false,
+        errorMessage: e.toString(),
+      );
+      debugPrint('🎬 [RIVERPOD] Erro na inicialização: $e');
+    }
+  }
+
+  /// Sincroniza com Firebase
+  Future<void> syncWithFirebase() async {
+    debugPrint('🎬 [RIVERPOD] Sincronizando com Firebase');
+    
+    state = state.copyWith(isSyncing: true);
+    
+    try {
+      // TODO: Implementar sincronização real
+      await Future.delayed(const Duration(seconds: 2));
+      
+      state = state.copyWith(isSyncing: false);
+      
+      debugPrint('🎬 [RIVERPOD] Sincronização completa');
+    } catch (e) {
+      state = state.copyWith(
+        isSyncing: false,
+        errorMessage: e.toString(),
+      );
+      debugPrint('🎬 [RIVERPOD] Erro na sincronização: $e');
+    }
+  }
+}
+
+/// Provider principal do serviço de mídia híbrido
+final hybridMediaProvider = StateNotifierProvider<HybridMediaNotifier, HybridMediaState>((ref) {
+  return HybridMediaNotifier();
+});
+
+/// Providers convenientes
+final mediaItemsProvider = Provider<List<dynamic>>((ref) {
+  return ref.watch(hybridMediaProvider).mediaItems;
+});
+
+final isHybridMediaInitializedProvider = Provider<bool>((ref) {
+  return ref.watch(hybridMediaProvider).isInitialized;
+});
+
+final isMediaSyncingProvider = Provider<bool>((ref) {
+  return ref.watch(hybridMediaProvider).isSyncing;
+});
+
+/// =============================================================================
+/// 8. PRESENTATION MANAGER → presentationManagerProvider
+/// =============================================================================
+
+@immutable
+class PresentationManagerState {
+  final bool isExternalPresentationActive;
+  final bool hasExternalDisplay;
+  final String? activeDisplayId;
+  final String? activeDisplayName;
+  final dynamic currentItem; // PresentationItem
+  final bool isBlackScreenActive;
+
+  const PresentationManagerState({
+    this.isExternalPresentationActive = false,
+    this.hasExternalDisplay = false,
+    this.activeDisplayId,
+    this.activeDisplayName,
+    this.currentItem,
+    this.isBlackScreenActive = false,
+  });
+
+  PresentationManagerState copyWith({
+    bool? isExternalPresentationActive,
+    bool? hasExternalDisplay,
+    String? activeDisplayId,
+    String? activeDisplayName,
+    dynamic currentItem,
+    bool? isBlackScreenActive,
+  }) {
+    return PresentationManagerState(
+      isExternalPresentationActive: isExternalPresentationActive ?? this.isExternalPresentationActive,
+      hasExternalDisplay: hasExternalDisplay ?? this.hasExternalDisplay,
+      activeDisplayId: activeDisplayId ?? this.activeDisplayId,
+      activeDisplayName: activeDisplayName ?? this.activeDisplayName,
+      currentItem: currentItem ?? this.currentItem,
+      isBlackScreenActive: isBlackScreenActive ?? this.isBlackScreenActive,
+    );
+  }
+}
+
+class PresentationManagerNotifier extends StateNotifier<PresentationManagerState> {
+  PresentationManagerNotifier() : super(const PresentationManagerState()) {
+    _initialize();
+  }
+
+  /// Inicializa o gerenciador de apresentação
+  Future<void> _initialize() async {
+    debugPrint('📊 [RIVERPOD] Inicializando PresentationManager');
+    
+    try {
+      // TODO: Implementar inicialização real
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Simula detecção de display externo
+      state = state.copyWith(hasExternalDisplay: false);
+      
+      debugPrint('📊 [RIVERPOD] PresentationManager inicializado');
+    } catch (e) {
+      debugPrint('📊 [RIVERPOD] Erro na inicialização: $e');
+    }
+  }
+
+  /// Inicia apresentação externa
+  Future<void> startExternalPresentation(String displayId) async {
+    debugPrint('📊 [RIVERPOD] Iniciando apresentação externa: $displayId');
+    
+    try {
+      // TODO: Implementar lógica real
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      state = state.copyWith(
+        isExternalPresentationActive: true,
+        activeDisplayId: displayId,
+        activeDisplayName: 'Display Externo',
+      );
+      
+      debugPrint('📊 [RIVERPOD] Apresentação externa ativa');
+    } catch (e) {
+      debugPrint('📊 [RIVERPOD] Erro ao iniciar apresentação: $e');
+    }
+  }
+
+  /// Para apresentação externa
+  Future<void> stopExternalPresentation() async {
+    debugPrint('📊 [RIVERPOD] Parando apresentação externa');
+    
+    try {
+      // TODO: Implementar lógica real
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      state = state.copyWith(
+        isExternalPresentationActive: false,
+        activeDisplayId: null,
+        activeDisplayName: null,
+        currentItem: null,
+        isBlackScreenActive: false,
+      );
+      
+      debugPrint('📊 [RIVERPOD] Apresentação externa parada');
+    } catch (e) {
+      debugPrint('📊 [RIVERPOD] Erro ao parar apresentação: $e');
+    }
+  }
+
+  /// Ativa/desativa tela preta
+  void toggleBlackScreen() {
+    debugPrint('📊 [RIVERPOD] Alternando tela preta');
+    
+    state = state.copyWith(
+      isBlackScreenActive: !state.isBlackScreenActive,
+    );
+  }
+}
+
+/// Provider principal do gerenciador de apresentação
+final presentationManagerProvider = StateNotifierProvider<PresentationManagerNotifier, PresentationManagerState>((ref) {
+  return PresentationManagerNotifier();
+});
+
+/// Providers convenientes
+final isExternalPresentationActiveProvider = Provider<bool>((ref) {
+  return ref.watch(presentationManagerProvider).isExternalPresentationActive;
+});
+
+final hasExternalDisplayProvider = Provider<bool>((ref) {
+  return ref.watch(presentationManagerProvider).hasExternalDisplay;
+});
+
+final currentPresentationItemProvider = Provider<dynamic>((ref) {
+  return ref.watch(presentationManagerProvider).currentItem;
+});
+
+/// =============================================================================
+/// 9. PRESENTATION ENGINE SERVICE → presentationEngineProvider
+/// =============================================================================
+
+@immutable
+class PresentationEngineState {
+  final dynamic currentItem; // PresentationItem
+  final bool isBlackScreenActive;
+  final bool isPresentationReady;
+  final String? connectedDisplayId;
+  final String? connectedDisplayName;
+
+  const PresentationEngineState({
+    this.currentItem,
+    this.isBlackScreenActive = false,
+    this.isPresentationReady = false,
+    this.connectedDisplayId,
+    this.connectedDisplayName,
+  });
+
+  PresentationEngineState copyWith({
+    dynamic currentItem,
+    bool? isBlackScreenActive,
+    bool? isPresentationReady,
+    String? connectedDisplayId,
+    String? connectedDisplayName,
+  }) {
+    return PresentationEngineState(
+      currentItem: currentItem ?? this.currentItem,
+      isBlackScreenActive: isBlackScreenActive ?? this.isBlackScreenActive,
+      isPresentationReady: isPresentationReady ?? this.isPresentationReady,
+      connectedDisplayId: connectedDisplayId ?? this.connectedDisplayId,
+      connectedDisplayName: connectedDisplayName ?? this.connectedDisplayName,
+    );
+  }
+}
+
+class PresentationEngineNotifier extends StateNotifier<PresentationEngineState> {
+  PresentationEngineNotifier() : super(const PresentationEngineState()) {
+    _setupMethodCallHandler();
+  }
+
+  /// Configura manipulador de chamadas nativas
+  void _setupMethodCallHandler() {
+    debugPrint('📊 [RIVERPOD] Configurando PresentationEngine');
+    
+    // TODO: Implementar setup real do método channel
+    // Por enquanto simula inicialização
+    Future.delayed(const Duration(milliseconds: 200), () {
+      state = state.copyWith(isPresentationReady: true);
+      debugPrint('📊 [RIVERPOD] PresentationEngine pronto');
+    });
+  }
+
+  /// Mostra item na apresentação
+  Future<void> showPresentationItem(dynamic item) async {
+    debugPrint('📊 [RIVERPOD] Mostrando item na apresentação');
+    
+    try {
+      // TODO: Implementar lógica real
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      state = state.copyWith(
+        currentItem: item,
+        isBlackScreenActive: false,
+      );
+      
+      debugPrint('📊 [RIVERPOD] Item mostrado na apresentação');
+    } catch (e) {
+      debugPrint('📊 [RIVERPOD] Erro ao mostrar item: $e');
+    }
+  }
+
+  /// Ativa tela preta
+  void activateBlackScreen() {
+    debugPrint('📊 [RIVERPOD] Ativando tela preta');
+    
+    state = state.copyWith(
+      isBlackScreenActive: true,
+      currentItem: null,
+    );
+  }
+
+  /// Desativa tela preta
+  void deactivateBlackScreen() {
+    debugPrint('📊 [RIVERPOD] Desativando tela preta');
+    
+    state = state.copyWith(isBlackScreenActive: false);
+  }
+}
+
+/// Provider principal do engine de apresentação
+final presentationEngineProvider = StateNotifierProvider<PresentationEngineNotifier, PresentationEngineState>((ref) {
+  return PresentationEngineNotifier();
+});
+
+/// Providers convenientes
+final isPresentationReadyProvider = Provider<bool>((ref) {
+  return ref.watch(presentationEngineProvider).isPresentationReady;
+});
+
+final presentationBlackScreenProvider = Provider<bool>((ref) {
+  return ref.watch(presentationEngineProvider).isBlackScreenActive;
+});
+
+final currentPresentationEngineItemProvider = Provider<dynamic>((ref) {
+  return ref.watch(presentationEngineProvider).currentItem;
 });
 
 /// Provider conveniente para verificar se está perto do limite

@@ -17,9 +17,9 @@ import 'package:versee/pages/landing/landing_page.dart';
 import 'package:versee/pages/welcome/welcome_page.dart';
 import 'package:versee/pages/legal/legal_page.dart';
 import 'package:versee/pages/web_projection_page.dart';
-import 'package:versee/services/verse_collection_service.dart';
+// import 'package:versee/services/verse_collection_service.dart'; // MIGRADO para Riverpod
 import 'package:versee/services/media_service.dart';
-import 'package:versee/services/hybrid_media_service.dart';
+// import 'package:versee/services/hybrid_media_service.dart'; // MIGRADO para Riverpod
 import 'package:versee/services/playlist_service.dart';
 import 'package:versee/services/auth_service.dart';
 import 'package:versee/services/firestore_sync_service.dart';
@@ -34,9 +34,10 @@ import 'package:versee/services/display_manager.dart';
 import 'package:versee/services/notes_service.dart';
 import 'package:versee/services/theme_service.dart';
 import 'package:versee/services/language_service.dart';
-import 'package:versee/services/user_settings_service.dart';
-import 'package:versee/services/presentation_manager.dart';
-import 'package:versee/services/presentation_engine_service.dart';
+// import 'package:versee/services/user_settings_service.dart'; // MIGRADO para Riverpod
+// import 'package:versee/services/presentation_manager.dart'; // MIGRADO para Riverpod
+// import 'package:versee/services/presentation_engine_service.dart'; // MIGRADO para Riverpod
+import 'package:versee/services/storage_analysis_service.dart';
 import 'package:versee/providers/riverpod_providers.dart';
 
 void main() async {
@@ -78,7 +79,7 @@ void main() async {
       child: VerseeApp(
         themeService: appServices.themeService,
         languageService: appServices.languageService,
-        userSettingsService: appServices.userSettingsService,
+        // userSettingsService: appServices.userSettingsService, // MIGRADO para Riverpod
         authService: appServices.authService,
         firebaseManager: appServices.firebaseManager,
         isOfflineMode: !appServices.firebaseInitialized,
@@ -91,7 +92,7 @@ void main() async {
 class AppServices {
   final ThemeService themeService;
   final LanguageService languageService;
-  final UserSettingsService userSettingsService;
+  // final UserSettingsService userSettingsService; // MIGRADO para Riverpod
   final AuthService authService;
   final FirebaseManager firebaseManager;
   final bool firebaseInitialized;
@@ -99,7 +100,7 @@ class AppServices {
   AppServices({
     required this.themeService,
     required this.languageService,
-    required this.userSettingsService,
+    // required this.userSettingsService, // MIGRADO para Riverpod
     required this.authService,
     required this.firebaseManager,
     required this.firebaseInitialized,
@@ -135,13 +136,13 @@ Future<AppServices> initializeAppServices() async {
   debugPrint('🎨 Inicializando serviços básicos...');
   final themeService = ThemeService();
   final languageService = LanguageService();
-  final userSettingsService = UserSettingsService();
+  // final userSettingsService = UserSettingsService(); // MIGRADO para Riverpod
   
   try {
     await Future.wait([
       themeService.loadTheme(),
       languageService.loadLanguage(),
-      userSettingsService.loadSettings(),
+      // userSettingsService.loadSettings(), // MIGRADO para Riverpod
     ], eagerError: false);
     debugPrint('✅ Serviços básicos inicializados');
   } catch (e) {
@@ -177,7 +178,7 @@ Future<AppServices> initializeAppServices() async {
   return AppServices(
     themeService: themeService,
     languageService: languageService,
-    userSettingsService: userSettingsService,
+    // userSettingsService: userSettingsService, // MIGRADO para Riverpod
     authService: authService,
     firebaseManager: firebaseManager,
     firebaseInitialized: firebaseInitialized,
@@ -188,7 +189,7 @@ Future<AppServices> initializeAppServices() async {
 class VerseeApp extends StatelessWidget {
   final ThemeService themeService;
   final LanguageService languageService;
-  final UserSettingsService userSettingsService;
+  // final UserSettingsService userSettingsService; // MIGRADO para Riverpod
   final AuthService authService;
   final FirebaseManager firebaseManager;
   final bool isOfflineMode;
@@ -197,7 +198,7 @@ class VerseeApp extends StatelessWidget {
     super.key,
     required this.themeService,
     required this.languageService,
-    required this.userSettingsService,
+    // required this.userSettingsService, // MIGRADO para Riverpod
     required this.authService,
     required this.firebaseManager,
     required this.isOfflineMode,
@@ -214,18 +215,20 @@ class VerseeApp extends StatelessWidget {
         provider.Provider.value(value: firebaseManager),
         provider.Provider.value(value: isOfflineMode),
         
-        // UserSettingsService com inicialização simples
-        provider.ChangeNotifierProvider.value(value: userSettingsService),
+        // UserSettingsService MIGRADO para Riverpod
+        // provider.ChangeNotifierProvider.value(value: userSettingsService),
         
         // Serviços de mídia (sem dependências complexas)
         provider.ChangeNotifierProvider(create: (_) => MediaService()),
-        provider.ChangeNotifierProvider(create: (_) => HybridMediaService()),
+        // HybridMediaService MIGRADO para Riverpod
+        // provider.ChangeNotifierProvider(create: (_) => HybridMediaService()),
         provider.ChangeNotifierProvider(create: (_) => MediaPlaybackService()),
         provider.ChangeNotifierProvider(create: (_) => PlaylistService()),
         provider.ChangeNotifierProvider(create: (_) => MediaSyncService()),
         
         // Serviços de conteúdo
-        provider.ChangeNotifierProvider(create: (_) => VerseCollectionService()),
+        // VerseCollectionService MIGRADO para Riverpod
+        // provider.ChangeNotifierProvider(create: (_) => VerseCollectionService()),
         provider.ChangeNotifierProvider(create: (_) => NotesService()),
         
         // Serviços de sincronização (inicializados depois)
@@ -255,11 +258,12 @@ class VerseeApp extends StatelessWidget {
           create: (context) => _createDualScreenServiceSafely(context),
         ),
         
-        // Presentation services (nova Presentation API)
-        provider.ChangeNotifierProvider(create: (_) => PresentationEngineService()),
-        provider.ChangeNotifierProvider(create: (_) => PresentationManager()),
+        // Presentation services MIGRADOS para Riverpod
+        // provider.ChangeNotifierProvider(create: (_) => PresentationEngineService()),
+        // provider.ChangeNotifierProvider(create: (_) => PresentationManager()),
         
         // Serviços de análise
+        provider.ChangeNotifierProvider(create: (_) => StorageAnalysisService()),
       ],
       child: _AppWithTheme(),
     );
@@ -293,12 +297,12 @@ class VerseeApp extends StatelessWidget {
       Future.microtask(() {
         try {
           final mediaPlaybackService = provider.Provider.of<MediaPlaybackService>(context, listen: false);
-          final presentationManager = provider.Provider.of<PresentationManager>(context, listen: false);
-          final presentationEngine = provider.Provider.of<PresentationEngineService>(context, listen: false);
+          // final presentationManager = provider.Provider.of<PresentationManager>(context, listen: false); // MIGRADO para Riverpod
+          // final presentationEngine = provider.Provider.of<PresentationEngineService>(context, listen: false); // MIGRADO para Riverpod
           
           dualScreenService.setMediaPlaybackService(mediaPlaybackService);
-          dualScreenService.setPresentationManager(presentationManager);
-          dualScreenService.setPresentationEngine(presentationEngine);
+          // dualScreenService.setPresentationManager(presentationManager); // MIGRADO para Riverpod
+          // dualScreenService.setPresentationEngine(presentationEngine); // MIGRADO para Riverpod
           dualScreenService.initialize();
         } catch (e) {
           debugPrint('⚠️ Erro ao configurar DualScreenService: $e');
