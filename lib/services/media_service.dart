@@ -11,9 +11,13 @@ import 'package:versee/services/auth_service.dart';
 import 'package:versee/services/native_mobile_media_service.dart';
 // Platform abstraction imports
 import 'package:versee/platform/platform.dart';
+import 'package:versee/providers/riverpod_providers.dart';
 
 // Platform-specific imports with conditional compilation
 import 'dart:io' as io if (dart.library.io) 'dart:io';
+
+// Instância global para bridge híbrida
+MediaService? _globalMediaService;
 
 class MediaService extends ChangeNotifier {
   final List<MediaItem> _mediaItems = [];
@@ -39,6 +43,7 @@ class MediaService extends ChangeNotifier {
 
   // Constructor - initialize and load persisted data
   MediaService() {
+    _globalMediaService = this;
     _initializeAndLoadData();
   }
 
@@ -1182,9 +1187,39 @@ class MediaService extends ChangeNotifier {
     return item;
   }
 
+  // Getter estático para acesso global
+  static MediaService? get globalInstance => _globalMediaService;
+  
+  // Método de sincronização com Riverpod
+  void syncWithRiverpod(MediaState state) {
+    bool hasChanged = false;
+    
+    if (_mediaItems.length != state.mediaItems.length ||
+        _collections.length != state.collections.length ||
+        _isInitialized != state.isInitialized) {
+      
+      _mediaItems.clear();
+      _mediaItems.addAll(state.mediaItems);
+      _collections.clear();
+      _collections.addAll(state.collections);
+      _isInitialized = state.isInitialized;
+      
+      hasChanged = true;
+    }
+    
+    if (hasChanged) {
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
     _stopRealtimeSync();
+    
+    if (_globalMediaService == this) {
+      _globalMediaService = null;
+    }
+    
     super.dispose();
   }
 }

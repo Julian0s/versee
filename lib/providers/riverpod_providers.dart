@@ -4948,6 +4948,114 @@ class PresentationSettings {
   });
 }
 
+// ==========================================
+// MediaService - Bridge Híbrida 🎵
+// ==========================================
+
+class MediaState {
+  final List<MediaItem> mediaItems;
+  final List<MediaCollection> collections;
+  final bool isInitialized;
+
+  MediaState({
+    this.mediaItems = const [],
+    this.collections = const [],
+    this.isInitialized = false,
+  });
+
+  List<AudioItem> get audioItems => mediaItems.whereType<AudioItem>().toList();
+  List<VideoItem> get videoItems => mediaItems.whereType<VideoItem>().toList();
+  List<ImageItem> get imageItems => mediaItems.whereType<ImageItem>().toList();
+
+  MediaState copyWith({
+    List<MediaItem>? mediaItems,
+    List<MediaCollection>? collections,
+    bool? isInitialized,
+  }) {
+    return MediaState(
+      mediaItems: mediaItems ?? this.mediaItems,
+      collections: collections ?? this.collections,
+      isInitialized: isInitialized ?? this.isInitialized,
+    );
+  }
+}
+
+class MediaNotifier extends StateNotifier<MediaState> {
+  MediaNotifier() : super(MediaState()) {
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    // Simular inicialização básica
+    await Future.delayed(const Duration(milliseconds: 100));
+    state = state.copyWith(isInitialized: true);
+    _syncWithProviderSystem();
+  }
+
+  void addMediaItem(MediaItem item) {
+    final newItems = List<MediaItem>.from(state.mediaItems)..add(item);
+    state = state.copyWith(mediaItems: newItems);
+    _syncWithProviderSystem();
+  }
+
+  void removeMediaItem(String id) {
+    final newItems = state.mediaItems.where((item) => item.id != id).toList();
+    state = state.copyWith(mediaItems: newItems);
+    _syncWithProviderSystem();
+  }
+
+  void addCollection(MediaCollection collection) {
+    final newCollections = List<MediaCollection>.from(state.collections)..add(collection);
+    state = state.copyWith(collections: newCollections);
+    _syncWithProviderSystem();
+  }
+
+  void removeCollection(String id) {
+    final newCollections = state.collections.where((collection) => collection.id != id).toList();
+    state = state.copyWith(collections: newCollections);
+    _syncWithProviderSystem();
+  }
+
+  void updateMediaItem(MediaItem updatedItem) {
+    final newItems = state.mediaItems.map((item) {
+      return item.id == updatedItem.id ? updatedItem : item;
+    }).toList();
+    state = state.copyWith(mediaItems: newItems);
+    _syncWithProviderSystem();
+  }
+
+  MediaItem? getMediaById(String id) {
+    try {
+      return state.mediaItems.firstWhere((item) => item.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  List<MediaItem> getMediaByType(Type type) {
+    return state.mediaItems.where((item) => item.runtimeType == type).toList();
+  }
+
+  List<MediaItem> searchMedia(String query) {
+    final lowerQuery = query.toLowerCase();
+    return state.mediaItems.where((item) {
+      return item.title.toLowerCase().contains(lowerQuery) ||
+             item.fileName.toLowerCase().contains(lowerQuery);
+    }).toList();
+  }
+
+  void _syncWithProviderSystem() {
+    final globalMediaService = MediaService.globalInstance;
+    if (globalMediaService != null) {
+      globalMediaService.syncWithRiverpod(state);
+    }
+  }
+}
+
+final mediaProvider = StateNotifierProvider<MediaNotifier, MediaState>((ref) {
+  return MediaNotifier();
+});
+
 /// Providers convenientes
 final isSyncingProvider = Provider<bool>((ref) {
   return ref.watch(mediaSyncProvider).isSyncing;
