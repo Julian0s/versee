@@ -4682,6 +4682,272 @@ final firestoreSyncProvider = StateNotifierProvider<FirestoreSyncNotifier, Fires
   return FirestoreSyncNotifier(authService);
 });
 
+// ==========================================
+// DualScreenService - Bridge Híbrida 📱
+// ==========================================
+
+class DualScreenState {
+  final PresentationItem? currentItem;
+  final bool isPresenting;
+  final bool isBlackScreenActive;
+  final int currentSlideIndex;
+  final double fontSize;
+  final Color textColor;
+  final Color backgroundColor;
+  final TextAlign textAlignment;
+
+  DualScreenState({
+    this.currentItem,
+    this.isPresenting = false,
+    this.isBlackScreenActive = false,
+    this.currentSlideIndex = 0,
+    this.fontSize = 32.0,
+    this.textColor = Colors.white,
+    this.backgroundColor = Colors.black,
+    this.textAlignment = TextAlign.center,
+  });
+
+  DualScreenState copyWith({
+    PresentationItem? currentItem,
+    bool? isPresenting,
+    bool? isBlackScreenActive,
+    int? currentSlideIndex,
+    double? fontSize,
+    Color? textColor,
+    Color? backgroundColor,
+    TextAlign? textAlignment,
+  }) {
+    return DualScreenState(
+      currentItem: currentItem ?? this.currentItem,
+      isPresenting: isPresenting ?? this.isPresenting,
+      isBlackScreenActive: isBlackScreenActive ?? this.isBlackScreenActive,
+      currentSlideIndex: currentSlideIndex ?? this.currentSlideIndex,
+      fontSize: fontSize ?? this.fontSize,
+      textColor: textColor ?? this.textColor,
+      backgroundColor: backgroundColor ?? this.backgroundColor,
+      textAlignment: textAlignment ?? this.textAlignment,
+    );
+  }
+}
+
+class DualScreenNotifier extends StateNotifier<DualScreenState> {
+  late StreamController<PresentationState> _presentationStateController;
+  late StreamController<PresentationSettings> _settingsController;
+
+  DualScreenNotifier() : super(DualScreenState()) {
+    _presentationStateController = StreamController<PresentationState>.broadcast();
+    _settingsController = StreamController<PresentationSettings>.broadcast();
+  }
+
+  // Streams para widgets de apresentação
+  Stream<PresentationState> get presentationStateStream => 
+      _presentationStateController.stream;
+  Stream<PresentationSettings> get settingsStream => 
+      _settingsController.stream;
+
+  Future<void> startPresentation(PresentationItem item, {int initialSlideIndex = 0}) async {
+    state = state.copyWith(
+      currentItem: item,
+      currentSlideIndex: initialSlideIndex,
+      isPresenting: true,
+      isBlackScreenActive: false,
+    );
+    
+    _broadcastPresentationState();
+    _syncWithProviderSystem();
+  }
+
+  Future<void> stopPresentation() async {
+    state = state.copyWith(
+      isPresenting: false,
+      isBlackScreenActive: false,
+      currentItem: null,
+      currentSlideIndex: 0,
+    );
+    
+    _broadcastPresentationState();
+    _syncWithProviderSystem();
+  }
+
+  Future<void> toggleBlackScreen() async {
+    state = state.copyWith(isBlackScreenActive: !state.isBlackScreenActive);
+    
+    _broadcastPresentationState();
+    _syncWithProviderSystem();
+  }
+
+  Future<void> nextSlide() async {
+    if (!state.isPresenting || state.currentItem == null) return;
+    
+    final slides = _getCurrentItemSlides();
+    if (state.currentSlideIndex < slides.length - 1) {
+      state = state.copyWith(currentSlideIndex: state.currentSlideIndex + 1);
+      _broadcastPresentationState();
+      _syncWithProviderSystem();
+    }
+  }
+
+  Future<void> previousSlide() async {
+    if (!state.isPresenting || state.currentItem == null) return;
+    
+    if (state.currentSlideIndex > 0) {
+      state = state.copyWith(currentSlideIndex: state.currentSlideIndex - 1);
+      _broadcastPresentationState();
+      _syncWithProviderSystem();
+    }
+  }
+
+  Future<void> goToSlide(int index) async {
+    if (!state.isPresenting || state.currentItem == null) return;
+    
+    final slides = _getCurrentItemSlides();
+    if (index >= 0 && index < slides.length) {
+      state = state.copyWith(currentSlideIndex: index);
+      _broadcastPresentationState();
+      _syncWithProviderSystem();
+    }
+  }
+
+  void updatePresentationSettings({
+    double? fontSize,
+    Color? textColor,
+    Color? backgroundColor,
+    TextAlign? textAlignment,
+  }) {
+    state = state.copyWith(
+      fontSize: fontSize ?? state.fontSize,
+      textColor: textColor ?? state.textColor,
+      backgroundColor: backgroundColor ?? state.backgroundColor,
+      textAlignment: textAlignment ?? state.textAlignment,
+    );
+    
+    _broadcastSettingsState();
+    _syncWithProviderSystem();
+  }
+
+  List<dynamic> _getCurrentItemSlides() {
+    if (state.currentItem == null) return [];
+    
+    if (state.currentItem is LyricsItem) {
+      return (state.currentItem as LyricsItem).slides;
+    } else if (state.currentItem is VerseItem) {
+      return (state.currentItem as VerseItem).verses;
+    }
+    
+    return [];
+  }
+
+  bool get hasNextSlide {
+    if (!state.isPresenting || state.currentItem == null) return false;
+    final slides = _getCurrentItemSlides();
+    return state.currentSlideIndex < slides.length - 1;
+  }
+
+  bool get hasPreviousSlide {
+    if (!state.isPresenting || state.currentItem == null) return false;
+    return state.currentSlideIndex > 0;
+  }
+
+  void _broadcastPresentationState() {
+    final presentationState = PresentationState(
+      currentItem: state.currentItem,
+      isPresenting: state.isPresenting,
+      isBlackScreenActive: state.isBlackScreenActive,
+      currentSlideIndex: state.currentSlideIndex,
+    );
+    
+    if (!_presentationStateController.isClosed) {
+      _presentationStateController.add(presentationState);
+    }
+  }
+
+  void _broadcastSettingsState() {
+    final settingsState = PresentationSettings(
+      fontSize: state.fontSize,
+      textColor: state.textColor,
+      backgroundColor: state.backgroundColor,
+      textAlignment: state.textAlignment,
+    );
+    
+    if (!_settingsController.isClosed) {
+      _settingsController.add(settingsState);
+    }
+  }
+
+  void _syncWithProviderSystem() {
+    final globalDualScreenService = DualScreenService.globalInstance;
+    if (globalDualScreenService != null) {
+      globalDualScreenService.syncWithRiverpod(state);
+    }
+  }
+
+  Map<String, dynamic> getCurrentSlideInfo() {
+    if (!state.isPresenting || state.currentItem == null) {
+      return {
+        'currentSlide': 0,
+        'totalSlides': 0,
+        'canNext': false,
+        'canPrevious': false,
+        'title': 'Nenhuma apresentação ativa',
+        'content': '',
+      };
+    }
+    
+    final slides = _getCurrentItemSlides();
+    final currentSlide = slides.isNotEmpty ? slides[state.currentSlideIndex] : null;
+    
+    return {
+      'currentSlide': state.currentSlideIndex + 1,
+      'totalSlides': slides.length,
+      'canNext': hasNextSlide,
+      'canPrevious': hasPreviousSlide,
+      'title': state.currentItem!.title,
+      'content': currentSlide?.toString() ?? state.currentItem!.content,
+    };
+  }
+
+  @override
+  void dispose() {
+    _presentationStateController.close();
+    _settingsController.close();
+    super.dispose();
+  }
+}
+
+final dualScreenProvider = StateNotifierProvider<DualScreenNotifier, DualScreenState>((ref) {
+  return DualScreenNotifier();
+});
+
+/// Estado da apresentação para sincronização
+class PresentationState {
+  final PresentationItem? currentItem;
+  final bool isPresenting;
+  final bool isBlackScreenActive;
+  final int currentSlideIndex;
+
+  const PresentationState({
+    required this.currentItem,
+    required this.isPresenting,
+    required this.isBlackScreenActive,
+    required this.currentSlideIndex,
+  });
+}
+
+/// Configurações de apresentação
+class PresentationSettings {
+  final double fontSize;
+  final Color textColor;
+  final Color backgroundColor;
+  final TextAlign textAlignment;
+
+  const PresentationSettings({
+    required this.fontSize,
+    required this.textColor,
+    required this.backgroundColor,
+    required this.textAlignment,
+  });
+}
+
 /// Providers convenientes
 final isSyncingProvider = Provider<bool>((ref) {
   return ref.watch(mediaSyncProvider).isSyncing;

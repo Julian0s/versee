@@ -8,6 +8,10 @@ import 'package:versee/services/presentation_manager.dart';
 import 'package:versee/services/presentation_engine_service.dart';
 import 'package:versee/models/media_models.dart';
 import 'package:versee/utils/media_utils.dart';
+import 'package:versee/providers/riverpod_providers.dart';
+
+// Instância global para bridge híbrida
+DualScreenService? _globalDualScreenService;
 
 /// Serviço para gerenciar apresentação em dual screen
 /// Permite separar a tela de controle da tela de apresentação
@@ -23,6 +27,11 @@ class DualScreenService extends ChangeNotifier {
   bool _isBlackScreenActive = false;
   // Conexão será gerenciada pelo DisplayManager
   int _currentSlideIndex = 0;
+  
+  // Construtor que configura a instância global
+  DualScreenService() {
+    _globalDualScreenService = this;
+  }
   
   // Configurações de apresentação
   double _fontSize = 32.0;
@@ -88,10 +97,48 @@ class DualScreenService extends ChangeNotifier {
   bool get hasMediaService => _mediaPlaybackService != null;
   MediaPlaybackService? get mediaPlaybackService => _mediaPlaybackService;
 
+  // Getter estático para acesso global
+  static DualScreenService? get globalInstance => _globalDualScreenService;
+  
+  // Método de sincronização com Riverpod
+  void syncWithRiverpod(DualScreenState state) {
+    bool hasChanged = false;
+    
+    if (_currentItem != state.currentItem ||
+        _isPresenting != state.isPresenting ||
+        _isBlackScreenActive != state.isBlackScreenActive ||
+        _currentSlideIndex != state.currentSlideIndex ||
+        _fontSize != state.fontSize ||
+        _textColor != state.textColor ||
+        _backgroundColor != state.backgroundColor ||
+        _textAlignment != state.textAlignment) {
+      
+      _currentItem = state.currentItem;
+      _isPresenting = state.isPresenting;
+      _isBlackScreenActive = state.isBlackScreenActive;
+      _currentSlideIndex = state.currentSlideIndex;
+      _fontSize = state.fontSize;
+      _textColor = state.textColor;
+      _backgroundColor = state.backgroundColor;
+      _textAlignment = state.textAlignment;
+      
+      hasChanged = true;
+    }
+    
+    if (hasChanged) {
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
     _presentationStateController.close();
     _settingsController.close();
+    
+    if (_globalDualScreenService == this) {
+      _globalDualScreenService = null;
+    }
+    
     super.dispose();
   }
 
