@@ -27,7 +27,7 @@ import 'package:versee/services/firebase_manager.dart';
 import 'package:versee/services/realtime_data_service.dart';
 import 'package:versee/services/data_sync_manager.dart';
 import 'package:versee/services/dual_screen_service.dart';
-import 'package:versee/services/media_playback_service.dart';
+// import 'package:versee/services/media_playback_service.dart'; // MIGRADO para Riverpod
 import 'package:versee/services/media_sync_service.dart';
 import 'package:versee/services/display_factory.dart';
 import 'package:versee/services/display_manager.dart';
@@ -222,7 +222,8 @@ class VerseeApp extends StatelessWidget {
         provider.ChangeNotifierProvider(create: (_) => MediaService()),
         // HybridMediaService MIGRADO para Riverpod
         // provider.ChangeNotifierProvider(create: (_) => HybridMediaService()),
-        provider.ChangeNotifierProvider(create: (_) => MediaPlaybackService()),
+        // MediaPlaybackService MIGRADO para Riverpod
+        // provider.ChangeNotifierProvider(create: (_) => MediaPlaybackService()),
         provider.ChangeNotifierProvider(create: (_) => PlaylistService()),
         provider.ChangeNotifierProvider(create: (_) => MediaSyncService()),
         
@@ -296,11 +297,11 @@ class VerseeApp extends StatelessWidget {
       // Configuração posterior, não no construtor
       Future.microtask(() {
         try {
-          final mediaPlaybackService = provider.Provider.of<MediaPlaybackService>(context, listen: false);
+          // final mediaPlaybackService = provider.Provider.of<MediaPlaybackService>(context, listen: false); // MIGRADO para Riverpod
           // final presentationManager = provider.Provider.of<PresentationManager>(context, listen: false); // MIGRADO para Riverpod
           // final presentationEngine = provider.Provider.of<PresentationEngineService>(context, listen: false); // MIGRADO para Riverpod
           
-          dualScreenService.setMediaPlaybackService(mediaPlaybackService);
+          // dualScreenService.setMediaPlaybackService(mediaPlaybackService); // MIGRADO para Riverpod
           // dualScreenService.setPresentationManager(presentationManager); // MIGRADO para Riverpod
           // dualScreenService.setPresentationEngine(presentationEngine); // MIGRADO para Riverpod
           dualScreenService.initialize();

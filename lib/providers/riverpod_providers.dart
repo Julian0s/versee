@@ -15,6 +15,7 @@ import 'package:versee/pages/storage_page.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:versee/services/firebase_manager.dart';
 import 'package:versee/firestore/firestore_data_schema.dart';
+import 'package:versee/models/media_models.dart';
 import 'dart:convert';
 
 /// =============================================================================
@@ -3869,6 +3870,345 @@ class RealtimeDataNotifier extends StateNotifier<RealtimeDataState> {
 
 final realtimeDataProvider = StateNotifierProvider<RealtimeDataNotifier, RealtimeDataState>((ref) {
   return RealtimeDataNotifier();
+});
+
+// ==========================================
+// MediaPlaybackService - Migração Direta 🎛️
+// ==========================================
+
+class MediaPlaybackState {
+  final MediaItem? currentMedia;
+  final bool isPlaying;
+  final bool isPaused;
+  final Duration position;
+  final Duration duration;
+  final double volume;
+  final bool isMuted;
+
+  MediaPlaybackState({
+    this.currentMedia,
+    this.isPlaying = false,
+    this.isPaused = false,
+    this.position = Duration.zero,
+    this.duration = Duration.zero,
+    this.volume = 1.0,
+    this.isMuted = false,
+  });
+
+  // Estado da reprodução
+  bool get hasMedia => currentMedia != null;
+  bool get canPlay => hasMedia && !isPlaying;
+  bool get canPause => hasMedia && isPlaying;
+  bool get canStop => hasMedia && (isPlaying || isPaused);
+  bool get canSeek => hasMedia && duration > Duration.zero;
+
+  // Progresso da reprodução (0.0 - 1.0)
+  double get progress {
+    if (duration.inMilliseconds == 0) return 0.0;
+    return position.inMilliseconds / duration.inMilliseconds;
+  }
+
+  // Getters adicionais para compatibilidade com MediaSyncService
+  Duration get currentPosition => position;
+  String? get currentMediaId => currentMedia?.id;
+
+  // Obtém informações da mídia atual
+  String get currentMediaInfo {
+    if (!hasMedia) return 'Nenhuma mídia selecionada';
+    
+    final media = currentMedia!;
+    final parts = <String>[media.title];
+    
+    if (media is AudioItem && media.artist != null) {
+      parts.add(media.artist!);
+    } else if (media is VideoItem && media.resolution != null) {
+      parts.add(media.resolution!);
+    }
+    
+    return parts.join(' • ');
+  }
+
+  // Obtém o status atual da reprodução
+  String get playbackStatus {
+    if (!hasMedia) return 'Parado';
+    if (isPlaying) return 'Reproduzindo';
+    if (isPaused) return 'Pausado';
+    return 'Parado';
+  }
+
+  MediaPlaybackState copyWith({
+    MediaItem? currentMedia,
+    bool? isPlaying,
+    bool? isPaused,
+    Duration? position,
+    Duration? duration,
+    double? volume,
+    bool? isMuted,
+  }) {
+    return MediaPlaybackState(
+      currentMedia: currentMedia ?? this.currentMedia,
+      isPlaying: isPlaying ?? this.isPlaying,
+      isPaused: isPaused ?? this.isPaused,
+      position: position ?? this.position,
+      duration: duration ?? this.duration,
+      volume: volume ?? this.volume,
+      isMuted: isMuted ?? this.isMuted,
+    );
+  }
+}
+
+class MediaPlaybackNotifier extends StateNotifier<MediaPlaybackState> {
+  // Callbacks para controle do player widget
+  VoidCallback? _playCallback;
+  VoidCallback? _pauseCallback;
+  VoidCallback? _stopCallback;
+  Function(Duration)? _seekCallback;
+  Function(double)? _volumeCallback;
+
+  MediaPlaybackNotifier() : super(MediaPlaybackState());
+
+  /// Define a mídia atual para reprodução
+  void setCurrentMedia(MediaItem? media) {
+    if (state.currentMedia?.id != media?.id) {
+      state = state.copyWith(
+        currentMedia: media,
+        isPlaying: false,
+        isPaused: false,
+        position: Duration.zero,
+        duration: Duration.zero,
+      );
+    }
+  }
+
+  /// Registra callbacks do player widget para controle
+  void registerPlayerCallbacks({
+    VoidCallback? onPlay,
+    VoidCallback? onPause,
+    VoidCallback? onStop,
+    Function(Duration)? onSeek,
+    Function(double)? onVolume,
+  }) {
+    _playCallback = onPlay;
+    _pauseCallback = onPause;
+    _stopCallback = onStop;
+    _seekCallback = onSeek;
+    _volumeCallback = onVolume;
+  }
+
+  /// Inicia a reprodução
+  Future<void> play() async {
+    if (!state.hasMedia || state.isPlaying) return;
+
+    try {
+      _playCallback?.call();
+      state = state.copyWith(isPlaying: true, isPaused: false);
+    } catch (e) {
+      debugPrint('Erro ao iniciar reprodução: $e');
+    }
+  }
+
+  /// Pausa a reprodução
+  Future<void> pause() async {
+    if (!state.hasMedia || !state.isPlaying) return;
+
+    try {
+      _pauseCallback?.call();
+      state = state.copyWith(isPlaying: false, isPaused: true);
+    } catch (e) {
+      debugPrint('Erro ao pausar reprodução: $e');
+    }
+  }
+
+  /// Para a reprodução
+  Future<void> stop() async {
+    if (!state.hasMedia) return;
+
+    try {
+      _stopCallback?.call();
+      state = state.copyWith(
+        isPlaying: false,
+        isPaused: false,
+        position: Duration.zero,
+      );
+    } catch (e) {
+      debugPrint('Erro ao parar reprodução: $e');
+    }
+  }
+
+  /// Inicia reprodução de uma mídia específica
+  Future<void> playMedia(String mediaId) async {
+    if (state.currentMedia?.id == mediaId) {
+      await play();
+    }
+  }
+
+  /// Resume reprodução (alias para play para compatibilidade)
+  Future<void> resume() async {
+    await play();
+  }
+
+  /// Seek para posição específica (alias para seekTo para compatibilidade)
+  Future<void> seek(Duration position) async {
+    await seekTo(position);
+  }
+
+  /// Alterna entre play/pause
+  Future<void> togglePlayPause() async {
+    if (state.isPlaying) {
+      await pause();
+    } else {
+      await play();
+    }
+  }
+
+  /// Busca uma posição específica na mídia
+  Future<void> seekTo(Duration position) async {
+    if (!state.hasMedia || !state.canSeek) return;
+
+    try {
+      _seekCallback?.call(position);
+      state = state.copyWith(position: position);
+    } catch (e) {
+      debugPrint('Erro ao buscar posição: $e');
+    }
+  }
+
+  /// Busca por porcentagem (0.0 - 1.0)
+  Future<void> seekToPercentage(double percentage) async {
+    if (!state.canSeek) return;
+    
+    final position = Duration(
+      milliseconds: (state.duration.inMilliseconds * percentage).round(),
+    );
+    await seekTo(position);
+  }
+
+  /// Avança alguns segundos
+  Future<void> forward(int seconds) async {
+    final newPosition = state.position + Duration(seconds: seconds);
+    final maxPosition = state.duration;
+    
+    if (newPosition >= maxPosition) {
+      await seekTo(maxPosition);
+    } else {
+      await seekTo(newPosition);
+    }
+  }
+
+  /// Retrocede alguns segundos
+  Future<void> rewind(int seconds) async {
+    final newPosition = state.position - Duration(seconds: seconds);
+    
+    if (newPosition <= Duration.zero) {
+      await seekTo(Duration.zero);
+    } else {
+      await seekTo(newPosition);
+    }
+  }
+
+  /// Define o volume (0.0 - 1.0)
+  Future<void> setVolume(double volume) async {
+    if (!state.hasMedia) return;
+
+    final clampedVolume = volume.clamp(0.0, 1.0);
+    final isMuted = clampedVolume == 0.0;
+    
+    try {
+      _volumeCallback?.call(clampedVolume);
+      state = state.copyWith(volume: clampedVolume, isMuted: isMuted);
+    } catch (e) {
+      debugPrint('Erro ao definir volume: $e');
+    }
+  }
+
+  /// Ativa/desativa mudo
+  Future<void> toggleMute() async {
+    if (state.isMuted) {
+      await setVolume(1.0);
+    } else {
+      await setVolume(0.0);
+    }
+  }
+
+  /// Atualiza a posição atual (chamado pelo player widget)
+  void updatePosition(Duration position) {
+    if (state.position != position) {
+      state = state.copyWith(position: position);
+    }
+  }
+
+  /// Atualiza a duração total (chamado pelo player widget)
+  void updateDuration(Duration duration) {
+    if (state.duration != duration) {
+      state = state.copyWith(duration: duration);
+    }
+  }
+
+  /// Atualiza o estado de reprodução (chamado pelo player widget)
+  void updatePlaybackState({
+    bool? isPlaying,
+    bool? isPaused,
+  }) {
+    bool needsUpdate = false;
+    bool newIsPlaying = state.isPlaying;
+    bool newIsPaused = state.isPaused;
+    
+    if (isPlaying != null && state.isPlaying != isPlaying) {
+      newIsPlaying = isPlaying;
+      needsUpdate = true;
+    }
+    
+    if (isPaused != null && state.isPaused != isPaused) {
+      newIsPaused = isPaused;
+      needsUpdate = true;
+    }
+    
+    if (needsUpdate) {
+      state = state.copyWith(isPlaying: newIsPlaying, isPaused: newIsPaused);
+    }
+  }
+
+  /// Notifica que a reprodução foi concluída
+  void onPlaybackComplete() {
+    state = state.copyWith(
+      isPlaying: false,
+      isPaused: false,
+      position: Duration.zero,
+    );
+  }
+
+  /// Limpa a mídia atual
+  void clearMedia() {
+    setCurrentMedia(null);
+  }
+
+  /// Formata duração para exibição
+  String formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = duration.inHours;
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    
+    if (hours > 0) {
+      return '$hours:$minutes:$seconds';
+    } else {
+      return '$minutes:$seconds';
+    }
+  }
+
+  @override
+  void dispose() {
+    _playCallback = null;
+    _pauseCallback = null;
+    _stopCallback = null;
+    _seekCallback = null;
+    _volumeCallback = null;
+    super.dispose();
+  }
+}
+
+final mediaPlaybackProvider = StateNotifierProvider<MediaPlaybackNotifier, MediaPlaybackState>((ref) {
+  return MediaPlaybackNotifier();
 });
 
 /// Providers convenientes
