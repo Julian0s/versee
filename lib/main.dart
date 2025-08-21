@@ -22,7 +22,7 @@ import 'package:versee/services/media_service.dart';
 // import 'package:versee/services/hybrid_media_service.dart'; // MIGRADO para Riverpod
 import 'package:versee/services/playlist_service.dart';
 import 'package:versee/services/auth_service.dart';
-import 'package:versee/services/firestore_sync_service.dart';
+// import 'package:versee/services/firestore_sync_service.dart'; // MIGRADO para Riverpod
 import 'package:versee/services/firebase_manager.dart';
 import 'package:versee/services/realtime_data_service.dart';
 import 'package:versee/services/data_sync_manager.dart';
@@ -242,11 +242,12 @@ class VerseeApp extends StatelessWidget {
         
         // Serviços Firebase (só se disponível)
         if (!isOfflineMode) ...[
-          provider.ChangeNotifierProvider(
-            create: (context) => FirestoreSyncService(
-              provider.Provider.of<AuthService>(context, listen: false),
-            ),
-          ),
+          // FirestoreSyncService MIGRADO para Riverpod
+          // provider.ChangeNotifierProvider(
+          //   create: (context) => FirestoreSyncService(
+          //     provider.Provider.of<AuthService>(context, listen: false),
+          //   ),
+          // ),
         ],
         
         // Display services (inicialização tardia e segura)
