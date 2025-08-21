@@ -18,7 +18,9 @@ import 'package:versee/firestore/firestore_data_schema.dart';
 import 'package:versee/models/media_models.dart';
 import 'package:versee/services/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 
 /// =============================================================================
 /// ARQUIVO CENTRAL DE PROVIDERS DO RIVERPOD
@@ -5377,4 +5379,477 @@ extension ProviderExtensions on WidgetRef {
   
   /// Acesso rápido à sugestão de upgrade
   String? get upgradeStorageSuggestion => watch(upgradeStorageSuggestionProvider);
+}
+
+// -----------------------------------------------------------------------------
+// Auth Provider - Migração do AuthService com Bridge Híbrida
+// -----------------------------------------------------------------------------
+
+/// Estado de autenticação contendo todos os campos do AuthService original
+class AuthState {
+  final User? user;
+  final Map<String, dynamic>? localUser;
+  final bool isLoading;
+  final String? errorMessage;
+  final bool isAuthenticated;
+  final bool isFirebaseConnected;
+  final bool isUsingLocalAuth;
+  
+  const AuthState({
+    this.user,
+    this.localUser,
+    this.isLoading = false,
+    this.errorMessage,
+    this.isAuthenticated = false,
+    this.isFirebaseConnected = true,
+    this.isUsingLocalAuth = false,
+  });
+  
+  AuthState copyWith({
+    User? user,
+    Map<String, dynamic>? localUser,
+    bool? isLoading,
+    String? errorMessage,
+    bool? isAuthenticated,
+    bool? isFirebaseConnected,
+    bool? isUsingLocalAuth,
+  }) {
+    return AuthState(
+      user: user ?? this.user,
+      localUser: localUser ?? this.localUser,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage ?? this.errorMessage,
+      isAuthenticated: isAuthenticated ?? this.isAuthenticated,
+      isFirebaseConnected: isFirebaseConnected ?? this.isFirebaseConnected,
+      isUsingLocalAuth: isUsingLocalAuth ?? this.isUsingLocalAuth,
+    );
+  }
+}
+
+/// Notifier para gerenciar estado de autenticação
+/// Bridge híbrida - mantém sincronização com AuthService original
+class AuthNotifier extends StateNotifier<AuthState> {
+  AuthNotifier() : super(const AuthState()) {
+    _setupBridge();
+  }
+  
+  /// Configura bridge com AuthService original
+  void _setupBridge() {
+    final authService = AuthService.globalInstance;
+    if (authService != null) {
+      authService.addListener(_syncFromProvider);
+      _syncFromProvider();
+    }
+  }
+  
+  /// Sincroniza estado do Provider para Riverpod
+  void _syncFromProvider() {
+    final authService = AuthService.globalInstance;
+    if (authService != null) {
+      state = AuthState(
+        user: authService.user,
+        localUser: authService.localUser,
+        isLoading: authService.isLoading,
+        errorMessage: authService.errorMessage,
+        isAuthenticated: authService.isAuthenticated,
+        isFirebaseConnected: authService.isFirebaseConnected,
+        isUsingLocalAuth: authService.isUsingLocalAuth,
+      );
+      
+      // Sincronizar mudanças de volta para o Provider
+      authService.syncWithRiverpod(state);
+    }
+  }
+  
+  /// Bridge methods - delegam para AuthService original
+  Future<bool> signInWithEmailAndPassword(String email, String password) async {
+    final authService = AuthService.globalInstance;
+    if (authService != null) {
+      final result = await authService.signInWithEmailAndPassword(email, password);
+      _syncFromProvider();
+      return result;
+    }
+    return false;
+  }
+  
+  Future<bool> registerWithEmailAndPassword({
+    required String email,
+    required String password,
+    required String displayName,
+  }) async {
+    final authService = AuthService.globalInstance;
+    if (authService != null) {
+      final result = await authService.registerWithEmailAndPassword(
+        email: email,
+        password: password,
+        displayName: displayName,
+      );
+      _syncFromProvider();
+      return result;
+    }
+    return false;
+  }
+  
+  Future<void> signOut() async {
+    final authService = AuthService.globalInstance;
+    if (authService != null) {
+      await authService.signOut();
+      _syncFromProvider();
+    }
+  }
+  
+  Future<bool> resetPassword(String email) async {
+    final authService = AuthService.globalInstance;
+    if (authService != null) {
+      final result = await authService.resetPassword(email);
+      _syncFromProvider();
+      return result;
+    }
+    return false;
+  }
+  
+  Future<bool> updateUserProfile({
+    String? displayName,
+    String? language,
+    String? theme,
+  }) async {
+    final authService = AuthService.globalInstance;
+    if (authService != null) {
+      final result = await authService.updateUserProfile(
+        displayName: displayName,
+        language: language,
+        theme: theme,
+      );
+      _syncFromProvider();
+      return result;
+    }
+    return false;
+  }
+  
+  Future<Map<String, dynamic>?> getUserData() async {
+    final authService = AuthService.globalInstance;
+    if (authService != null) {
+      return await authService.getUserData();
+    }
+    return null;
+  }
+  
+  Future<bool> deleteAccount() async {
+    final authService = AuthService.globalInstance;
+    if (authService != null) {
+      final result = await authService.deleteAccount();
+      _syncFromProvider();
+      return result;
+    }
+    return false;
+  }
+  
+  Future<bool> initialize() async {
+    final authService = AuthService.globalInstance;
+    if (authService != null) {
+      final result = await authService.initialize();
+      _syncFromProvider();
+      return result;
+    }
+    return false;
+  }
+  
+  void initializeOfflineMode() {
+    final authService = AuthService.globalInstance;
+    if (authService != null) {
+      authService.initializeOfflineMode();
+      _syncFromProvider();
+    }
+  }
+}
+
+/// Provider principal do estado de autenticação
+final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+  return AuthNotifier();
+});
+
+/// Providers derivados para acesso específico
+final currentUserProvider = Provider<User?>((ref) {
+  return ref.watch(authProvider).user;
+});
+
+final isAuthenticatedProvider = Provider<bool>((ref) {
+  return ref.watch(authProvider).isAuthenticated;
+});
+
+final isLoadingAuthProvider = Provider<bool>((ref) {
+  return ref.watch(authProvider).isLoading;
+});
+
+final authErrorMessageProvider = Provider<String?>((ref) {
+  return ref.watch(authProvider).errorMessage;
+});
+
+final isFirebaseConnectedProvider = Provider<bool>((ref) {
+  return ref.watch(authProvider).isFirebaseConnected;
+});
+
+final isUsingLocalAuthProvider = Provider<bool>((ref) {
+  return ref.watch(authProvider).isUsingLocalAuth;
+});
+
+final localUserProvider = Provider<Map<String, dynamic>?>((ref) {
+  return ref.watch(authProvider).localUser;
+});
+
+// Extension para facilitar acesso aos providers de auth
+extension AuthProviderExtension on WidgetRef {
+  // =================== AUTH EXTENSIONS ===================
+  /// Acesso rápido ao estado completo de autenticação
+  AuthState get currentAuthState => watch(authProvider);
+  
+  /// Acesso rápido ao AuthNotifier para ações
+  AuthNotifier get authNotifier => read(authProvider.notifier);
+  
+  /// Acesso rápido ao usuário atual
+  User? get currentUser => watch(currentUserProvider);
+  
+  /// Acesso rápido para verificar se está autenticado
+  bool get isAuthenticated => watch(isAuthenticatedProvider);
+  
+  /// Acesso rápido para verificar se está carregando auth
+  bool get isLoadingAuth => watch(isLoadingAuthProvider);
+  
+  /// Acesso rápido a mensagens de erro de auth
+  String? get authErrorMessage => watch(authErrorMessageProvider);
+  
+  /// Acesso rápido para verificar se Firebase está conectado
+  bool get isFirebaseConnected => watch(isFirebaseConnectedProvider);
+  
+  /// Acesso rápido para verificar se está usando auth local
+  bool get isUsingLocalAuth => watch(isUsingLocalAuthProvider);
+  
+  /// Acesso rápido ao usuário local
+  Map<String, dynamic>? get localUser => watch(localUserProvider);
+}
+
+// -----------------------------------------------------------------------------
+// Firebase Manager Provider - Migração do FirebaseManager com Bridge Híbrida
+// -----------------------------------------------------------------------------
+
+/// Estado do FirebaseManager contendo informações de inicialização
+class FirebaseManagerState {
+  final bool isInitialized;
+  final bool isOfflineEnabled;
+  final String? currentUserId;
+  final Map<String, bool>? connectivity;
+  final Map<String, dynamic>? serviceStatus;
+  
+  const FirebaseManagerState({
+    this.isInitialized = false,
+    this.isOfflineEnabled = false,
+    this.currentUserId,
+    this.connectivity,
+    this.serviceStatus,
+  });
+  
+  FirebaseManagerState copyWith({
+    bool? isInitialized,
+    bool? isOfflineEnabled,
+    String? currentUserId,
+    Map<String, bool>? connectivity,
+    Map<String, dynamic>? serviceStatus,
+  }) {
+    return FirebaseManagerState(
+      isInitialized: isInitialized ?? this.isInitialized,
+      isOfflineEnabled: isOfflineEnabled ?? this.isOfflineEnabled,
+      currentUserId: currentUserId ?? this.currentUserId,
+      connectivity: connectivity ?? this.connectivity,
+      serviceStatus: serviceStatus ?? this.serviceStatus,
+    );
+  }
+}
+
+/// Notifier para gerenciar estado do FirebaseManager
+/// Bridge híbrida - mantém sincronização com FirebaseManager original
+class FirebaseManagerNotifier extends StateNotifier<FirebaseManagerState> {
+  FirebaseManagerNotifier() : super(const FirebaseManagerState()) {
+    _setupBridge();
+  }
+  
+  /// Configura bridge com FirebaseManager original
+  void _setupBridge() {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      _syncFromSingleton();
+    }
+  }
+  
+  /// Sincroniza estado do Singleton para Riverpod
+  void _syncFromSingleton() {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      state = FirebaseManagerState(
+        isInitialized: firebaseManager.isInitialized,
+        isOfflineEnabled: firebaseManager.isOfflineEnabled,
+        currentUserId: firebaseManager.currentUserId,
+      );
+      
+      // Sincronizar mudanças de volta para o Singleton
+      firebaseManager.syncWithRiverpod(state);
+    }
+  }
+  
+  /// Bridge methods - delegam para FirebaseManager original
+  Future<void> initialize() async {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      await firebaseManager.initialize();
+      _syncFromSingleton();
+    }
+  }
+  
+  Future<bool> enableOfflinePersistence() async {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      final result = await firebaseManager.enableOfflinePersistence();
+      _syncFromSingleton();
+      return result;
+    }
+    return false;
+  }
+  
+  Future<bool> disableOfflinePersistence() async {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      final result = await firebaseManager.disableOfflinePersistence();
+      _syncFromSingleton();
+      return result;
+    }
+    return false;
+  }
+  
+  Future<bool> clearOfflineCache() async {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      final result = await firebaseManager.clearOfflineCache();
+      _syncFromSingleton();
+      return result;
+    }
+    return false;
+  }
+  
+  Future<Map<String, bool>> checkConnectivity() async {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      final connectivity = await firebaseManager.checkConnectivity();
+      state = state.copyWith(connectivity: connectivity);
+      return connectivity;
+    }
+    return {};
+  }
+  
+  Map<String, dynamic> getServiceStatus() {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      final serviceStatus = firebaseManager.getServiceStatus();
+      state = state.copyWith(serviceStatus: serviceStatus);
+      return serviceStatus;
+    }
+    return {};
+  }
+  
+  Future<void> cleanup() async {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      await firebaseManager.cleanup();
+      _syncFromSingleton();
+    }
+  }
+  
+  Future<void> saveMediaItem(MediaItem mediaItem) async {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      await firebaseManager.saveMediaItem(mediaItem);
+    }
+  }
+  
+  Future<List<MediaItem>> loadUserMediaItems() async {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      return await firebaseManager.loadUserMediaItems();
+    }
+    return [];
+  }
+  
+  Future<void> deleteMediaItem(String mediaItemId) async {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      await firebaseManager.deleteMediaItem(mediaItemId);
+    }
+  }
+  
+  Future<String> uploadMediaFile(
+    String fileName,
+    Uint8List data, {
+    String? contentType,
+    void Function(double progress)? onProgress,
+  }) async {
+    final firebaseManager = FirebaseManager.globalInstance;
+    if (firebaseManager != null) {
+      return await firebaseManager.uploadMediaFile(
+        fileName,
+        data,
+        contentType: contentType,
+        onProgress: onProgress,
+      );
+    }
+    throw Exception('FirebaseManager not available');
+  }
+}
+
+/// Provider principal do estado do FirebaseManager
+final firebaseManagerProvider = StateNotifierProvider<FirebaseManagerNotifier, FirebaseManagerState>((ref) {
+  return FirebaseManagerNotifier();
+});
+
+/// Providers derivados para acesso específico
+final isFirebaseInitializedProvider = Provider<bool>((ref) {
+  return ref.watch(firebaseManagerProvider).isInitialized;
+});
+
+final isOfflineEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(firebaseManagerProvider).isOfflineEnabled;
+});
+
+final firebaseCurrentUserIdProvider = Provider<String?>((ref) {
+  return ref.watch(firebaseManagerProvider).currentUserId;
+});
+
+final firebaseConnectivityProvider = Provider<Map<String, bool>?>((ref) {
+  return ref.watch(firebaseManagerProvider).connectivity;
+});
+
+final firebaseServiceStatusProvider = Provider<Map<String, dynamic>?>((ref) {
+  return ref.watch(firebaseManagerProvider).serviceStatus;
+});
+
+// Extension para facilitar acesso aos providers do Firebase Manager
+extension FirebaseManagerProviderExtension on WidgetRef {
+  // =================== FIREBASE MANAGER EXTENSIONS ===================
+  /// Acesso rápido ao estado completo do FirebaseManager
+  FirebaseManagerState get currentFirebaseManagerState => watch(firebaseManagerProvider);
+  
+  /// Acesso rápido ao FirebaseManagerNotifier para ações
+  FirebaseManagerNotifier get firebaseManagerNotifier => read(firebaseManagerProvider.notifier);
+  
+  /// Acesso rápido para verificar se Firebase está inicializado
+  bool get isFirebaseInitialized => watch(isFirebaseInitializedProvider);
+  
+  /// Acesso rápido para verificar se offline está habilitado
+  bool get isOfflineEnabled => watch(isOfflineEnabledProvider);
+  
+  /// Acesso rápido ao ID do usuário atual do Firebase
+  String? get firebaseCurrentUserId => watch(firebaseCurrentUserIdProvider);
+  
+  /// Acesso rápido ao status de conectividade do Firebase
+  Map<String, bool>? get firebaseConnectivity => watch(firebaseConnectivityProvider);
+  
+  /// Acesso rápido ao status dos serviços Firebase
+  Map<String, dynamic>? get firebaseServiceStatus => watch(firebaseServiceStatusProvider);
 }

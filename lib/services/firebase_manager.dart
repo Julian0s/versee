@@ -5,13 +5,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:versee/firebase_options.dart';
 import 'package:versee/models/media_models.dart';
+import 'package:versee/providers/riverpod_providers.dart';
+
+// Instância global para bridge híbrida
+FirebaseManager? _globalFirebaseManager;
 
 /// Central manager for Firebase services initialization and configuration
 /// Provides a unified interface for Firebase operations across the VERSEE app
 class FirebaseManager {
   static final FirebaseManager _instance = FirebaseManager._internal();
   factory FirebaseManager() => _instance;
-  FirebaseManager._internal();
+  FirebaseManager._internal() {
+    _globalFirebaseManager = this;
+  }
 
   bool _isInitialized = false;
   bool _isOfflineEnabled = false;
@@ -690,6 +696,22 @@ class FirebaseManager {
       }
     }
     return null;
+  }
+  
+  // ============= BRIDGE HÍBRIDA PARA RIVERPOD =============
+  
+  /// Getter estático para acesso global à instância
+  static FirebaseManager? get globalInstance => _globalFirebaseManager;
+  
+  /// Método de sincronização com Riverpod
+  void syncWithRiverpod(FirebaseManagerState state) {
+    // FirebaseManager é principalmente singleton, então não há muito estado para sincronizar
+    // mas mantemos a interface consistente com outros services
+    if (_isInitialized != state.isInitialized ||
+        _isOfflineEnabled != state.isOfflineEnabled) {
+      _isInitialized = state.isInitialized;
+      _isOfflineEnabled = state.isOfflineEnabled;
+    }
   }
 }
 

@@ -3,6 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:versee/firestore/firestore_data_schema.dart';
 import 'package:versee/services/local_auth_service.dart';
+import 'package:versee/providers/riverpod_providers.dart';
+
+// Instância global para bridge híbrida
+AuthService? _globalAuthService;
 
 /// Serviço de autenticação para o VERSEE
 /// Gerencia login, registro, logout e estado do usuário
@@ -28,6 +32,7 @@ class AuthService extends ChangeNotifier {
 
   AuthService() {
     _localAuth.addListener(_onLocalAuthChanged);
+    _globalAuthService = this;
     debugPrint('🔐 [AUTH] AuthService criado (inicialização manual necessária)');
   }
 
@@ -554,5 +559,43 @@ class AuthService extends ChangeNotifier {
       default:
         return 'Erro de autenticação: $code';
     }
+  }
+
+  // ============= BRIDGE HÍBRIDA PARA RIVERPOD =============
+  
+  /// Getter estático para acesso global à instância
+  static AuthService? get globalInstance => _globalAuthService;
+  
+  /// Método de sincronização com Riverpod
+  void syncWithRiverpod(AuthState state) {
+    bool hasChanged = false;
+    
+    if (_user?.uid != state.user?.uid ||
+        _isLoading != state.isLoading ||
+        _errorMessage != state.errorMessage ||
+        _isFirebaseConnected != state.isFirebaseConnected ||
+        _useLocalAuth != state.isUsingLocalAuth) {
+      
+      _user = state.user;
+      _isLoading = state.isLoading;
+      _errorMessage = state.errorMessage;
+      _isFirebaseConnected = state.isFirebaseConnected;
+      _useLocalAuth = state.isUsingLocalAuth;
+      
+      hasChanged = true;
+    }
+    
+    if (hasChanged) {
+      notifyListeners();
+    }
+  }
+  
+  @override
+  void dispose() {
+    _localAuth.removeListener(_onLocalAuthChanged);
+    if (_globalAuthService == this) {
+      _globalAuthService = null;
+    }
+    super.dispose();
   }
 }

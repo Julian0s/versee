@@ -211,8 +211,10 @@ class VerseeApp extends StatelessWidget {
         // Serviços básicos sempre disponíveis
         provider.ChangeNotifierProvider.value(value: themeService),
         provider.ChangeNotifierProvider.value(value: languageService),
-        provider.ChangeNotifierProvider.value(value: authService),
-        provider.Provider.value(value: firebaseManager),
+        // AuthService MIGRADO para Riverpod (bridge híbrida)
+        // provider.ChangeNotifierProvider.value(value: authService),
+        // FirebaseManager MIGRADO para Riverpod (bridge híbrida)
+        // provider.Provider.value(value: firebaseManager),
         provider.Provider.value(value: isOfflineMode),
         
         // UserSettingsService MIGRADO para Riverpod
@@ -445,12 +447,14 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
-    return provider.Consumer<AuthService>(
-      builder: (context, authService, child) {
-        debugPrint('🔄 [AuthWrapper] Build - isLoading: ${authService.isLoading}, isAuthenticated: ${authService.isAuthenticated}');
+    return Consumer(
+      builder: (context, ref, child) {
+        final authState = ref.watch(authProvider);
+        
+        debugPrint('🔄 [AuthWrapper] Build - isLoading: ${authState.isLoading}, isAuthenticated: ${authState.isAuthenticated}');
         
         // Se está carregando, mostrar tela de loading
-        if (authService.isLoading) {
+        if (authState.isLoading) {
           debugPrint('🔄 [AuthWrapper] Mostrando tela de loading');
           return const Scaffold(
             backgroundColor: Colors.black,
@@ -461,12 +465,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
 
         // Se está autenticado, mostrar app principal
-        if (authService.isAuthenticated) {
+        if (authState.isAuthenticated) {
           debugPrint('🔄 [AuthWrapper] Usuário autenticado, mostrando app principal');
           return Column(
             children: [
               // Indicador de status do Firebase
-              if (authService.isUsingLocalAuth)
+              if (authState.isUsingLocalAuth)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
