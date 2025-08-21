@@ -2662,6 +2662,254 @@ final notesErrorMessageProvider = Provider<String?>((ref) {
   return ref.watch(notesProvider).errorMessage;
 });
 
+/// =============================================================================
+/// 11. PLAYLIST SERVICE → playlistProvider
+/// =============================================================================
+
+@immutable
+class PlaylistState {
+  final List<dynamic> playlists; // Playlist objects
+  final bool isInitialized;
+  final bool isLoading;
+  final String? errorMessage;
+
+  const PlaylistState({
+    this.playlists = const [],
+    this.isInitialized = false,
+    this.isLoading = false,
+    this.errorMessage,
+  });
+
+  PlaylistState copyWith({
+    List<dynamic>? playlists,
+    bool? isInitialized,
+    bool? isLoading,
+    String? errorMessage,
+  }) {
+    return PlaylistState(
+      playlists: playlists ?? this.playlists,
+      isInitialized: isInitialized ?? this.isInitialized,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+}
+
+class PlaylistNotifier extends StateNotifier<PlaylistState> {
+  PlaylistNotifier() : super(const PlaylistState());
+
+  /// Inicializa o serviço de playlists
+  Future<void> initialize() async {
+    if (state.isInitialized) {
+      debugPrint('🎵 [RIVERPOD] PlaylistService já inicializado');
+      return;
+    }
+
+    debugPrint('🎵 [RIVERPOD] Iniciando PlaylistService');
+    
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    _syncWithProviderSystem();
+
+    try {
+      // TODO: Implementar inicialização real com Firebase
+      await Future.delayed(const Duration(seconds: 1));
+      
+      state = state.copyWith(
+        isInitialized: true,
+        isLoading: false,
+        playlists: [], // Lista vazia por enquanto
+      );
+      _syncWithProviderSystem();
+      
+      debugPrint('🎵 [RIVERPOD] PlaylistService inicializado com sucesso');
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString(),
+      );
+      _syncWithProviderSystem();
+      
+      debugPrint('🎵 [RIVERPOD] Erro ao inicializar PlaylistService: $e');
+    }
+  }
+
+  /// Carrega playlists do Firebase
+  Future<void> loadPlaylists() async {
+    debugPrint('🎵 [RIVERPOD] Carregando playlists');
+    
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    _syncWithProviderSystem();
+
+    try {
+      // TODO: Implementar carregamento real das playlists
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      state = state.copyWith(
+        playlists: [], // Lista vazia por enquanto
+        isLoading: false,
+      );
+      _syncWithProviderSystem();
+      
+      debugPrint('🎵 [RIVERPOD] Playlists carregadas: ${state.playlists.length}');
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString(),
+      );
+      _syncWithProviderSystem();
+      debugPrint('🎵 [RIVERPOD] Erro ao carregar playlists: $e');
+    }
+  }
+
+  /// Cria uma nova playlist
+  Future<void> createPlaylist(String title, {String? description}) async {
+    debugPrint('🎵 [RIVERPOD] Criando playlist: $title');
+    
+    try {
+      // TODO: Implementar criação real da playlist
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      final updatedPlaylists = List<dynamic>.from(state.playlists);
+      // TODO: Adicionar playlist real criada
+      
+      state = state.copyWith(playlists: updatedPlaylists);
+      _syncWithProviderSystem();
+      
+      debugPrint('🎵 [RIVERPOD] Playlist criada: $title');
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      _syncWithProviderSystem();
+      debugPrint('🎵 [RIVERPOD] Erro ao criar playlist: $e');
+    }
+  }
+
+  /// Atualiza uma playlist existente
+  Future<void> updatePlaylist(String playlistId, dynamic updatedPlaylist) async {
+    debugPrint('🎵 [RIVERPOD] Atualizando playlist: $playlistId');
+    
+    try {
+      // TODO: Implementar atualização real da playlist
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      final updatedPlaylists = state.playlists.map((playlist) {
+        // TODO: Implementar lógica real de comparação de ID
+        return playlist; // Por enquanto retorna sem alteração
+      }).toList();
+      
+      state = state.copyWith(playlists: updatedPlaylists);
+      _syncWithProviderSystem();
+      
+      debugPrint('🎵 [RIVERPOD] Playlist atualizada: $playlistId');
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      _syncWithProviderSystem();
+      debugPrint('🎵 [RIVERPOD] Erro ao atualizar playlist: $e');
+    }
+  }
+
+  /// Deleta uma playlist
+  Future<void> deletePlaylist(String playlistId) async {
+    debugPrint('🎵 [RIVERPOD] Deletando playlist: $playlistId');
+    
+    try {
+      // TODO: Implementar deleção real da playlist
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      final updatedPlaylists = state.playlists.where((playlist) {
+        // TODO: Implementar lógica real de comparação de ID
+        return true; // Por enquanto não remove nenhuma
+      }).toList();
+      
+      state = state.copyWith(playlists: updatedPlaylists);
+      _syncWithProviderSystem();
+      
+      debugPrint('🎵 [RIVERPOD] Playlist deletada: $playlistId');
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      _syncWithProviderSystem();
+      debugPrint('🎵 [RIVERPOD] Erro ao deletar playlist: $e');
+    }
+  }
+
+  /// Adiciona item à playlist
+  Future<void> addItemToPlaylist(String playlistId, dynamic item) async {
+    debugPrint('🎵 [RIVERPOD] Adicionando item à playlist: $playlistId');
+    
+    try {
+      // TODO: Implementar adição real do item
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      // TODO: Atualizar playlist específica com novo item
+      
+      debugPrint('🎵 [RIVERPOD] Item adicionado à playlist');
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      _syncWithProviderSystem();
+      debugPrint('🎵 [RIVERPOD] Erro ao adicionar item: $e');
+    }
+  }
+
+  /// Remove item da playlist
+  Future<void> removeItemFromPlaylist(String playlistId, String itemId) async {
+    debugPrint('🎵 [RIVERPOD] Removendo item da playlist: $playlistId');
+    
+    try {
+      // TODO: Implementar remoção real do item
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      // TODO: Atualizar playlist específica removendo item
+      
+      debugPrint('🎵 [RIVERPOD] Item removido da playlist');
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      _syncWithProviderSystem();
+      debugPrint('🎵 [RIVERPOD] Erro ao remover item: $e');
+    }
+  }
+
+  /// Sincroniza o estado do Riverpod com o sistema Provider legado
+  /// Isso faz com que todos os arquivos que usam Provider.of<PlaylistService> reajam
+  void _syncWithProviderSystem() {
+    final globalPlaylistService = PlaylistService.globalInstance;
+    if (globalPlaylistService != null) {
+      debugPrint('🔗 [BRIDGE] Sincronizando Riverpod → Provider (Playlist)');
+      globalPlaylistService.syncWithRiverpod(
+        state.playlists,
+        state.isInitialized,
+        state.isLoading,
+        state.errorMessage,
+      );
+      debugPrint('🔗 [BRIDGE] Sincronização completa');
+    }
+  }
+}
+
+/// Provider principal das playlists
+final playlistProvider = StateNotifierProvider<PlaylistNotifier, PlaylistState>((ref) {
+  return PlaylistNotifier();
+});
+
+/// Providers convenientes
+final playlistsListProvider = Provider<List<dynamic>>((ref) {
+  return ref.watch(playlistProvider).playlists;
+});
+
+final isPlaylistsInitializedProvider = Provider<bool>((ref) {
+  return ref.watch(playlistProvider).isInitialized;
+});
+
+final isPlaylistsLoadingProvider = Provider<bool>((ref) {
+  return ref.watch(playlistProvider).isLoading;
+});
+
+final playlistsErrorMessageProvider = Provider<String?>((ref) {
+  return ref.watch(playlistProvider).errorMessage;
+});
+
+final playlistsCountProvider = Provider<int>((ref) {
+  return ref.watch(playlistProvider).playlists.length;
+});
+
 /// Provider conveniente para verificar se excedeu o limite
 final isOverStorageLimitProvider = Provider<bool>((ref) {
   final notifier = ref.read(storageAnalysisProvider.notifier);

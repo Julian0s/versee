@@ -3,6 +3,9 @@ import 'package:versee/models/playlist_models.dart';
 import 'package:versee/services/typed_firebase_service.dart';
 import 'dart:async';
 
+/// Instância global do PlaylistService para bridge híbrida com Riverpod
+PlaylistService? _globalPlaylistService;
+
 // Enum para tipos de conteúdo
 enum ContentType { bible, lyrics, notes, audio, video, image }
 
@@ -143,6 +146,8 @@ class PlaylistService extends ChangeNotifier {
   StreamSubscription<List<PlaylistModel>>? _playlistsSubscription;
 
   PlaylistService() {
+    // Registrar esta instância globalmente para bridge híbrida
+    _globalPlaylistService = this;
     _initializeFirebaseConnection();
   }
 
@@ -441,4 +446,20 @@ class PlaylistService extends ChangeNotifier {
 
   /// Verifica se o usuário está autenticado
   bool get isAuthenticated => _firebaseService.isAuthenticated;
+
+  /// Sincroniza com Riverpod - usado para bridge híbrida
+  /// Este método é chamado quando o Riverpod muda o estado
+  void syncWithRiverpod(List<dynamic> newPlaylists, bool initialized, bool loading, String? error) {
+    debugPrint('🔄 [PROVIDER] Sincronizando com Riverpod (Playlist)');
+    
+    // Atualizar playlists com dados do Riverpod
+    _playlists.clear();
+    _playlists.addAll(newPlaylists.cast<Playlist>());
+    
+    // Notificar listeners para que todos os Provider.of<PlaylistService> reajam
+    notifyListeners();
+  }
+  
+  /// Função estática para acesso global à instância (bridge híbrida)
+  static PlaylistService? get globalInstance => _globalPlaylistService;
 }
