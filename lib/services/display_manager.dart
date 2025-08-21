@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:versee/models/display_models.dart' hide ConnectionState;
 import 'package:versee/services/playlist_service.dart';
 import 'package:versee/services/language_service.dart';
+import 'package:versee/providers/riverpod_providers.dart';
+
+// Instância global para bridge híbrida
+BaseDisplayManager? _globalDisplayManager;
 
 /// Interface abstrata para gerenciamento de displays externos
 /// Implementações específicas para web, Android e iOS
@@ -113,6 +117,11 @@ abstract class BaseDisplayManager extends DisplayManager {
   PresentationItem? _currentItem;
   int _currentSlideIndex = 0;
   bool _isBlackScreenActive = false;
+  
+  // Construtor que configura a instância global
+  BaseDisplayManager() {
+    _globalDisplayManager = this;
+  }
 
   // Controladores de stream
   final StreamController<DisplayStateChangeEvent> _stateController = 
@@ -271,11 +280,54 @@ abstract class BaseDisplayManager extends DisplayManager {
   void setLanguageService(LanguageService languageService) {
     _languageService = languageService;
   }
+  
+  // Getter estático para acesso global
+  static BaseDisplayManager? get globalInstance => _globalDisplayManager;
+  
+  // Método de sincronização com Riverpod
+  void syncWithRiverpod(DisplayManagerState state) {
+    bool hasChanged = false;
+    
+    if (_availableDisplays.length != state.availableDisplays.length ||
+        _connectedDisplay != state.connectedDisplay ||
+        _isPresenting != state.isPresenting ||
+        _currentItem != state.currentItem ||
+        _currentSlideIndex != state.currentSlideIndex ||
+        _isBlackScreenActive != state.isBlackScreenActive ||
+        _fontSize != state.fontSize ||
+        _textColor != state.textColor ||
+        _backgroundColor != state.backgroundColor ||
+        _textAlignment != state.textAlignment) {
+      
+      _availableDisplays.clear();
+      _availableDisplays.addAll(state.availableDisplays);
+      _connectedDisplay = state.connectedDisplay;
+      _isPresenting = state.isPresenting;
+      _currentItem = state.currentItem;
+      _currentSlideIndex = state.currentSlideIndex;
+      _isBlackScreenActive = state.isBlackScreenActive;
+      _fontSize = state.fontSize;
+      _textColor = state.textColor;
+      _backgroundColor = state.backgroundColor;
+      _textAlignment = state.textAlignment;
+      
+      hasChanged = true;
+    }
+    
+    if (hasChanged) {
+      notifyListeners();
+    }
+  }
 
   @override
   void dispose() {
     _stateController.close();
     _discoveryController.close();
+    
+    if (_globalDisplayManager == this) {
+      _globalDisplayManager = null;
+    }
+    
     super.dispose();
   }
 

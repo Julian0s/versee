@@ -5056,6 +5056,202 @@ final mediaProvider = StateNotifierProvider<MediaNotifier, MediaState>((ref) {
   return MediaNotifier();
 });
 
+// ==========================================
+// DisplayManager - Bridge Híbrida 🖥️
+// ==========================================
+
+class DisplayManagerState {
+  final List<ExternalDisplay> availableDisplays;
+  final ExternalDisplay? connectedDisplay;
+  final bool isPresenting;
+  final PresentationItem? currentItem;
+  final int currentSlideIndex;
+  final bool isBlackScreenActive;
+  final double fontSize;
+  final Color textColor;
+  final Color backgroundColor;
+  final TextAlign textAlignment;
+
+  DisplayManagerState({
+    this.availableDisplays = const [],
+    this.connectedDisplay,
+    this.isPresenting = false,
+    this.currentItem,
+    this.currentSlideIndex = 0,
+    this.isBlackScreenActive = false,
+    this.fontSize = 32.0,
+    this.textColor = Colors.white,
+    this.backgroundColor = Colors.black,
+    this.textAlignment = TextAlign.center,
+  });
+
+  bool get hasConnectedDisplay => connectedDisplay != null && connectedDisplay!.isConnected;
+
+  DisplayManagerState copyWith({
+    List<ExternalDisplay>? availableDisplays,
+    ExternalDisplay? connectedDisplay,
+    bool? isPresenting,
+    PresentationItem? currentItem,
+    int? currentSlideIndex,
+    bool? isBlackScreenActive,
+    double? fontSize,
+    Color? textColor,
+    Color? backgroundColor,
+    TextAlign? textAlignment,
+  }) {
+    return DisplayManagerState(
+      availableDisplays: availableDisplays ?? this.availableDisplays,
+      connectedDisplay: connectedDisplay ?? this.connectedDisplay,
+      isPresenting: isPresenting ?? this.isPresenting,
+      currentItem: currentItem ?? this.currentItem,
+      currentSlideIndex: currentSlideIndex ?? this.currentSlideIndex,
+      isBlackScreenActive: isBlackScreenActive ?? this.isBlackScreenActive,
+      fontSize: fontSize ?? this.fontSize,
+      textColor: textColor ?? this.textColor,
+      backgroundColor: backgroundColor ?? this.backgroundColor,
+      textAlignment: textAlignment ?? this.textAlignment,
+    );
+  }
+}
+
+class DisplayManagerNotifier extends StateNotifier<DisplayManagerState> {
+  DisplayManagerNotifier() : super(DisplayManagerState());
+
+  Future<void> initialize() async {
+    // Simular inicialização
+    await Future.delayed(const Duration(milliseconds: 100));
+    _syncWithProviderSystem();
+  }
+
+  Future<List<ExternalDisplay>> scanForDisplays({Duration? timeout}) async {
+    // Simular scan de displays
+    await Future.delayed(timeout ?? const Duration(seconds: 2));
+    
+    final mockDisplays = <ExternalDisplay>[
+      // Aqui seria implementada a lógica real de descoberta
+    ];
+    
+    state = state.copyWith(availableDisplays: mockDisplays);
+    _syncWithProviderSystem();
+    
+    return mockDisplays;
+  }
+
+  Future<bool> connectToDisplay(String displayId) async {
+    final display = state.availableDisplays
+        .where((d) => d.id == displayId)
+        .firstOrNull;
+    
+    if (display != null) {
+      final connectedDisplay = display.copyWith(
+        state: DisplayConnectionState.connected,
+      );
+      
+      state = state.copyWith(connectedDisplay: connectedDisplay);
+      _syncWithProviderSystem();
+      return true;
+    }
+    
+    return false;
+  }
+
+  Future<void> disconnect() async {
+    await stopPresentation();
+    state = state.copyWith(connectedDisplay: null);
+    _syncWithProviderSystem();
+  }
+
+  Future<bool> startPresentation(PresentationItem item) async {
+    if (!state.hasConnectedDisplay) return false;
+    
+    state = state.copyWith(
+      isPresenting: true,
+      currentItem: item,
+      currentSlideIndex: 0,
+      isBlackScreenActive: false,
+    );
+    
+    _syncWithProviderSystem();
+    return true;
+  }
+
+  Future<void> stopPresentation() async {
+    state = state.copyWith(
+      isPresenting: false,
+      currentItem: null,
+      currentSlideIndex: 0,
+      isBlackScreenActive: false,
+    );
+    
+    _syncWithProviderSystem();
+  }
+
+  Future<void> nextSlide() async {
+    if (!state.isPresenting || state.currentItem == null) return;
+    
+    // Por simplicidade, assumindo 1 slide por item
+    // Em implementação real, seria baseado no tipo do item
+    final totalSlides = 1;
+    
+    if (state.currentSlideIndex < totalSlides - 1) {
+      state = state.copyWith(currentSlideIndex: state.currentSlideIndex + 1);
+      _syncWithProviderSystem();
+    }
+  }
+
+  Future<void> previousSlide() async {
+    if (!state.isPresenting || state.currentItem == null) return;
+    
+    if (state.currentSlideIndex > 0) {
+      state = state.copyWith(currentSlideIndex: state.currentSlideIndex - 1);
+      _syncWithProviderSystem();
+    }
+  }
+
+  Future<void> goToSlide(int index) async {
+    if (!state.isPresenting || state.currentItem == null) return;
+    
+    final totalSlides = 1; // Por simplicidade
+    
+    if (index >= 0 && index < totalSlides) {
+      state = state.copyWith(currentSlideIndex: index);
+      _syncWithProviderSystem();
+    }
+  }
+
+  Future<void> toggleBlackScreen(bool active) async {
+    state = state.copyWith(isBlackScreenActive: active);
+    _syncWithProviderSystem();
+  }
+
+  Future<void> updatePresentationSettings({
+    double? fontSize,
+    Color? textColor,
+    Color? backgroundColor,
+    TextAlign? textAlignment,
+  }) async {
+    state = state.copyWith(
+      fontSize: fontSize ?? state.fontSize,
+      textColor: textColor ?? state.textColor,
+      backgroundColor: backgroundColor ?? state.backgroundColor,
+      textAlignment: textAlignment ?? state.textAlignment,
+    );
+    
+    _syncWithProviderSystem();
+  }
+
+  void _syncWithProviderSystem() {
+    final globalDisplayManager = BaseDisplayManager.globalInstance;
+    if (globalDisplayManager != null) {
+      globalDisplayManager.syncWithRiverpod(state);
+    }
+  }
+}
+
+final displayManagerProvider = StateNotifierProvider<DisplayManagerNotifier, DisplayManagerState>((ref) {
+  return DisplayManagerNotifier();
+});
+
 /// Providers convenientes
 final isSyncingProvider = Provider<bool>((ref) {
   return ref.watch(mediaSyncProvider).isSyncing;
