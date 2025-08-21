@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:versee/services/media_playback_service.dart';
 import 'package:versee/services/display_manager.dart';
 import 'package:versee/services/language_service.dart';
 import 'package:versee/providers/riverpod_providers.dart';
@@ -13,7 +12,7 @@ MediaSyncService? _globalMediaSyncService;
 /// Service responsible for synchronizing media playback across multiple displays
 /// Ensures that video/audio content is perfectly synchronized between displays
 class MediaSyncService extends ChangeNotifier {
-  MediaPlaybackService? _mediaPlaybackService;
+  // MediaPlaybackService? _mediaPlaybackService; // MIGRADO
   DisplayManager? _displayManager;
   LanguageService? _languageService;
   
@@ -46,9 +45,9 @@ class MediaSyncService extends ChangeNotifier {
   Map<String, double> get displayLatencies => Map.unmodifiable(_displayLatencies);
   Map<String, DateTime> get lastHeartbeats => Map.unmodifiable(_lastHeartbeats);
   
-  void setMediaPlaybackService(MediaPlaybackService service) {
-    _mediaPlaybackService = service;
-  }
+  // void setMediaPlaybackService(MediaPlaybackService service) {
+  //   _mediaPlaybackService = service;
+  // } // MIGRADO
   
   void setDisplayManager(DisplayManager manager) {
     _displayManager = manager;

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:versee/models/media_models.dart';
 import 'package:versee/widgets/media_player_widget.dart';
-import 'package:versee/services/media_playback_service.dart';
+import 'package:versee/providers/riverpod_providers.dart';
 import 'package:versee/services/language_service.dart';
 import 'package:versee/pages/presenter_page.dart';
 

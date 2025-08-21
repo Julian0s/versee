@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:versee/services/hybrid_media_service.dart';
+import 'package:versee/providers/riverpod_providers.dart';
 import 'package:versee/services/local_media_cache_service.dart';
 
 class MediaCacheManagerWidget extends StatefulWidget {
@@ -11,7 +11,8 @@ class MediaCacheManagerWidget extends StatefulWidget {
 }
 
 class _MediaCacheManagerWidgetState extends State<MediaCacheManagerWidget> {
-  MediaStorageInfo? _storageInfo;
+  // MediaStorageInfo? _storageInfo; // MIGRADO - tipo não encontrado
+  dynamic _storageInfo;
   bool _isLoading = true;
 
   @override
@@ -82,7 +83,7 @@ class _MediaCacheManagerWidgetState extends State<MediaCacheManagerWidget> {
     );
   }
 
-  Widget _buildStorageInfo(MediaStorageInfo info) {
+  Widget _buildStorageInfo(dynamic info) { // MediaStorageInfo migrado
     return Column(
       children: [
         // Estatísticas gerais
@@ -153,7 +154,7 @@ class _MediaCacheManagerWidgetState extends State<MediaCacheManagerWidget> {
     );
   }
 
-  Widget _buildMediaTypeBreakdown(MediaStorageInfo info) {
+  Widget _buildMediaTypeBreakdown(dynamic info) { // MediaStorageInfo migrado
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -207,7 +208,7 @@ class _MediaCacheManagerWidgetState extends State<MediaCacheManagerWidget> {
     );
   }
 
-  Widget _buildStorageProgressBar(MediaStorageInfo info) {
+  Widget _buildStorageProgressBar(dynamic info) { // MediaStorageInfo migrado
     final percentage = info.cacheUsagePercentage / 100;
     
     return Column(

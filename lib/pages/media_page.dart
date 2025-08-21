@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:versee/providers/riverpod_providers.dart';
 import 'package:versee/models/media_models.dart';
 import 'package:versee/services/media_service.dart';
 import 'package:versee/services/language_service.dart';
@@ -10,14 +12,14 @@ import 'package:versee/widgets/media_details_dialog.dart';
 import 'package:versee/pages/media_viewer_page.dart';
 import 'package:versee/widgets/media_folder_manager.dart';
 
-class MediaPage extends StatefulWidget {
+class MediaPage extends ConsumerStatefulWidget {
   const MediaPage({super.key});
 
   @override
-  State<MediaPage> createState() => _MediaPageState();
+  ConsumerState<MediaPage> createState() => _MediaPageState();
 }
 
-class _MediaPageState extends State<MediaPage> with TickerProviderStateMixin {
+class _MediaPageState extends ConsumerState<MediaPage> with TickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -33,7 +35,8 @@ class _MediaPageState extends State<MediaPage> with TickerProviderStateMixin {
     // Refresh every 30 seconds to catch any Firebase uploads
     Future.delayed(const Duration(seconds: 30), () {
       if (mounted) {
-        final mediaService = Provider.of<MediaService>(context, listen: false);
+        // final mediaService = Provider.of<MediaService>(context, listen: false); // MIGRADO
+        final mediaService = ref.read(mediaProvider.notifier);
         mediaService.syncWithFirebase().catchError((e) {
           // Silent fail - don't disturb user experience
         });
@@ -49,7 +52,8 @@ class _MediaPageState extends State<MediaPage> with TickerProviderStateMixin {
   }
 
   Future<void> _cleanupInvalidMedia(BuildContext context) async {
-    final languageService = Provider.of<LanguageService>(context, listen: false);
+    // final languageService = Provider.of<LanguageService>(context, listen: false); // MIGRADO
+    final languageService = ref.read(languageProvider.notifier);
     final strings = languageService.strings;
     
     // Show confirmation dialog first

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:versee/providers/riverpod_providers.dart';
 import 'package:versee/models/note_models.dart';
 import 'package:versee/services/notes_service.dart';
 import 'package:versee/services/language_service.dart';
@@ -7,14 +9,14 @@ import 'package:versee/pages/note_editor_page_improved.dart';
 import 'package:versee/utils/playlist_helpers.dart';
 import 'dart:async';
 
-class NotesPage extends StatefulWidget {
+class NotesPage extends ConsumerStatefulWidget {
   const NotesPage({super.key});
 
   @override
-  State<NotesPage> createState() => _NotesPageState();
+  ConsumerState<NotesPage> createState() => _NotesPageState();
 }
 
-class _NotesPageState extends State<NotesPage> with TickerProviderStateMixin {
+class _NotesPageState extends ConsumerState<NotesPage> with TickerProviderStateMixin {
   late TabController _tabController;
 
   @override

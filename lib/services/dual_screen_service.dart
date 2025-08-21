@@ -3,9 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:versee/services/playlist_service.dart';
-import 'package:versee/services/media_playback_service.dart';
-import 'package:versee/services/presentation_manager.dart';
-import 'package:versee/services/presentation_engine_service.dart';
 import 'package:versee/models/media_models.dart';
 import 'package:versee/utils/media_utils.dart';
 import 'package:versee/providers/riverpod_providers.dart';
@@ -16,10 +13,10 @@ DualScreenService? _globalDualScreenService;
 /// Serviço para gerenciar apresentação em dual screen
 /// Permite separar a tela de controle da tela de apresentação
 class DualScreenService extends ChangeNotifier {
-  // Referências aos serviços
-  MediaPlaybackService? _mediaPlaybackService;
-  PresentationManager? _presentationManager;
-  PresentationEngineService? _presentationEngine;
+  // Referências aos serviços (MIGRADOS para Riverpod)
+  // MediaPlaybackService? _mediaPlaybackService;
+  // PresentationManager? _presentationManager;
+  // PresentationEngineService? _presentationEngine;
   
   // Estados da apresentação
   PresentationItem? _currentItem;
@@ -63,25 +60,25 @@ class DualScreenService extends ChangeNotifier {
   Stream<PresentationSettings> get settingsStream => 
       _settingsController.stream;
 
-  // Injeta o serviço de reprodução de mídia
-  void setMediaPlaybackService(MediaPlaybackService service) {
-    _mediaPlaybackService = service;
-  }
+  // Injeta o serviço de reprodução de mídia (MIGRADO)
+  // void setMediaPlaybackService(MediaPlaybackService service) {
+  //   _mediaPlaybackService = service;
+  // }
 
-  // Injeta o gerenciador de apresentação
-  void setPresentationManager(PresentationManager manager) {
-    _presentationManager = manager;
-    
-    // Listen to presentation manager state changes
-    _presentationManager?.stateStream.listen((state) {
-      _syncWithPresentationManager(state);
-    });
-  }
+  // Injeta o gerenciador de apresentação (MIGRADO)
+  // void setPresentationManager(PresentationManager manager) {
+  //   _presentationManager = manager;
+  //   
+  //   // Listen to presentation manager state changes
+  //   _presentationManager?.stateStream.listen((state) {
+  //     _syncWithPresentationManager(state);
+  //   });
+  // }
 
-  // Injeta o serviço de engine de apresentação
-  void setPresentationEngine(PresentationEngineService engine) {
-    _presentationEngine = engine;
-  }
+  // Injeta o serviço de engine de apresentação (MIGRADO)
+  // void setPresentationEngine(PresentationEngineService engine) {
+  //   _presentationEngine = engine;
+  // }
 
   // Sincroniza com o estado do presentation manager
   void _syncWithPresentationManager(PresentationManagerState state) {
@@ -95,7 +92,7 @@ class DualScreenService extends ChangeNotifier {
 
   // Getter para verificar se há mídia
   bool get hasMediaService => _mediaPlaybackService != null;
-  MediaPlaybackService? get mediaPlaybackService => _mediaPlaybackService;
+  // MediaPlaybackService? get mediaPlaybackService => _mediaPlaybackService; // MIGRADO
 
   // Getter estático para acesso global
   static DualScreenService? get globalInstance => _globalDualScreenService;

@@ -3,14 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:versee/pages/chapter_list_page.dart';
 import 'package:versee/pages/slide_view_page.dart';
 import 'package:versee/pages/presenter_page.dart';
-import 'package:versee/services/verse_collection_service.dart';
+import 'package:versee/providers/riverpod_providers.dart';
 import 'package:versee/services/scripture_api_service.dart';
 import 'package:versee/services/xml_bible_service.dart';
 import 'package:versee/services/language_service.dart';
 import 'package:versee/utils/playlist_helpers.dart';
 import 'package:versee/models/bible_models.dart';
 import 'package:versee/services/settings_service.dart';
-import 'package:versee/services/user_settings_service.dart';
 
 class BiblePage extends StatefulWidget {
   const BiblePage({super.key});
@@ -23,7 +22,7 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
   late final TabController _mainTabController;
   late final TabController _testamentTabController;
   String _selectedVersion = 'KJV';
-  late final VerseCollectionService _collectionService;
+  // late final VerseCollectionService _collectionService; // MIGRADO para Riverpod
   late final ScriptureApiService _apiService;
 
   List<BibleVersionInfo> _bibleVersions = [];
@@ -38,11 +37,11 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
     super.initState();
     _mainTabController = TabController(length: 3, vsync: this);
     _testamentTabController = TabController(length: 2, vsync: this);
-    _collectionService = VerseCollectionService();
+    // _collectionService = VerseCollectionService(); // MIGRADO
     _apiService = ScriptureApiService();
 
-    // Escutar mudanças no serviço
-    _collectionService.addListener(_onCollectionsChanged);
+    // Escutar mudanças no serviço (MIGRADO)
+    // _collectionService.addListener(_onCollectionsChanged);
 
     // Carregar configurações salvas
     _loadSavedBibleVersion();
@@ -61,7 +60,7 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _collectionService.removeListener(_onCollectionsChanged);
+    // _collectionService.removeListener(_onCollectionsChanged); // MIGRADO
     _mainTabController.dispose();
     _testamentTabController.dispose();
     _searchController.dispose();
@@ -76,7 +75,7 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
 
   /// Carrega a versão da Bíblia salva nas configurações
   Future<void> _loadSavedBibleVersion() async {
-    final userSettings = UserSettingsService();
+    // final userSettings = UserSettingsService(); // MIGRADO
     await userSettings.loadSettings();
     setState(() {
       _selectedVersion = userSettings.selectedBibleVersion;
@@ -427,7 +426,7 @@ class _BiblePageState extends State<BiblePage> with TickerProviderStateMixin {
                         _selectedVersion = newValue;
                       });
                       // Salvar a versão selecionada
-                      UserSettingsService().setBibleVersion(newValue);
+                      // UserSettingsService().setBibleVersion(newValue); // MIGRADO
                     }
                   },
                 ),

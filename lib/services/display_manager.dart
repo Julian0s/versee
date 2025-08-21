@@ -284,7 +284,8 @@ abstract class BaseDisplayManager extends DisplayManager {
   // Getter estático para acesso global
   static BaseDisplayManager? get globalInstance => _globalDisplayManager;
   
-  // Método de sincronização com Riverpod
+  // Método de sincronização com Riverpod (TEMPORARIAMENTE COMENTADO)
+  /*
   void syncWithRiverpod(DisplayManagerState state) {
     bool hasChanged = false;
     
@@ -318,6 +319,7 @@ abstract class BaseDisplayManager extends DisplayManager {
       notifyListeners();
     }
   }
+  */
 
   @override
   void dispose() {

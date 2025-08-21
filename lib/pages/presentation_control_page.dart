@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:versee/services/dual_screen_service.dart';
 import 'package:versee/services/playlist_service.dart';
-import 'package:versee/services/media_playback_service.dart';
+import 'package:versee/providers/riverpod_providers.dart';
 import 'package:versee/services/display_manager.dart';
 import 'package:versee/services/media_sync_service.dart';
 import 'package:versee/services/language_service.dart';
@@ -999,7 +999,8 @@ class _PresentationControlPageState extends State<PresentationControlPage> {
     );
   }
 
-  Widget _buildMediaControls(DualScreenService dualScreenService, MediaPlaybackService mediaService) {
+  // Widget _buildMediaControls(DualScreenService dualScreenService, MediaPlaybackService mediaService) { // MIGRADO
+  Widget _buildMediaControls(DualScreenService dualScreenService, dynamic mediaService) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

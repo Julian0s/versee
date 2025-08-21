@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:versee/models/bible_models.dart';
 import 'package:versee/pages/playlist_item_manager_page.dart';
 import 'package:versee/pages/presentation_control_page.dart';
-import 'package:versee/services/verse_collection_service.dart';
+import 'package:versee/providers/riverpod_providers.dart';
 import 'package:versee/services/media_service.dart';
 import 'package:versee/services/playlist_service.dart';
 import 'package:versee/services/language_service.dart';
@@ -2044,6 +2044,11 @@ class _PlaylistCreationDialogState extends State<PlaylistCreationDialog>
           ),
         ),
         Expanded(
+          // TEMPORARIAMENTE COMENTADO - VerseCollectionService migrado
+          child: Container(
+            child: Text('Collections migrado para Riverpod - Em implementação'),
+          ),
+          /*
           child: Consumer<VerseCollectionService>(
             builder: (context, service, child) {
               final collections = service.collections;
@@ -2071,7 +2076,7 @@ class _PlaylistCreationDialogState extends State<PlaylistCreationDialog>
               );
             },
           ),
-        ),
+        */),
       ],
     );
   }

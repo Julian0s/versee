@@ -16,6 +16,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:versee/services/firebase_manager.dart';
 import 'package:versee/firestore/firestore_data_schema.dart';
 import 'package:versee/models/media_models.dart';
+import 'package:versee/models/bible_models.dart';
 import 'package:versee/services/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5059,8 +5060,11 @@ final mediaProvider = StateNotifierProvider<MediaNotifier, MediaState>((ref) {
 });
 
 // ==========================================
-// DisplayManager - Bridge Híbrida 🖥️
+// DisplayManager - Bridge Híbrida 🖥️ 
+// TEMPORARIAMENTE COMENTADO - Problemas com ExternalDisplay
 // ==========================================
+
+/*
 
 class DisplayManagerState {
   final List<ExternalDisplay> availableDisplays;
@@ -5243,7 +5247,7 @@ class DisplayManagerNotifier extends StateNotifier<DisplayManagerState> {
   }
 
   void _syncWithProviderSystem() {
-    final globalDisplayManager = BaseDisplayManager.globalInstance;
+    final globalDisplayManager = DisplayManager.globalInstance;
     if (globalDisplayManager != null) {
       globalDisplayManager.syncWithRiverpod(state);
     }
@@ -5293,6 +5297,8 @@ final mediaSyncErrorProvider = Provider<String?>((ref) {
 /// =============================================================================
 /// HELPERS E EXTENSÕES
 /// =============================================================================
+
+*/
 
 /// Extensão para facilitar o acesso aos providers em widgets
 /// Fornece sintaxe conveniente similar ao Provider.of<ThemeService>() e Provider.of<LanguageService>()

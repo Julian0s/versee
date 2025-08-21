@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:versee/models/bible_models.dart';
 import 'package:versee/pages/presenter_page.dart';
-import 'package:versee/services/verse_collection_service.dart';
+import 'package:versee/providers/riverpod_providers.dart';
 import 'package:versee/services/language_service.dart';
 
 class CreateSelectionPage extends StatefulWidget {

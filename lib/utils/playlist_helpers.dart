@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:versee/services/playlist_service.dart';
 import 'package:versee/widgets/playlist_selection_dialog.dart';
-import 'package:versee/services/verse_collection_service.dart';
+import 'package:versee/providers/riverpod_providers.dart';
 import 'package:versee/models/note_models.dart';
 import 'package:versee/models/media_models.dart';
 import 'package:versee/models/bible_models.dart';

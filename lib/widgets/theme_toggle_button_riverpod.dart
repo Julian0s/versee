@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:versee/providers/riverpod_providers.dart';
 import 'package:versee/services/language_service.dart';
-import 'package:versee/services/user_settings_service.dart';
 import 'package:provider/provider.dart' as provider;
 
 /// Widget de seleção de tema usando Riverpod
