@@ -219,26 +219,32 @@ class VerseeApp extends StatelessWidget {
         // provider.ChangeNotifierProvider.value(value: userSettingsService),
         
         // Serviços de mídia (sem dependências complexas)
-        provider.ChangeNotifierProvider(create: (_) => MediaService()),
+        // MediaService MIGRADO para Riverpod (bridge híbrida)
+        // provider.ChangeNotifierProvider(create: (_) => MediaService()),
         // HybridMediaService MIGRADO para Riverpod
         // provider.ChangeNotifierProvider(create: (_) => HybridMediaService()),
         // MediaPlaybackService MIGRADO para Riverpod
         // provider.ChangeNotifierProvider(create: (_) => MediaPlaybackService()),
-        provider.ChangeNotifierProvider(create: (_) => PlaylistService()),
-        provider.ChangeNotifierProvider(create: (_) => MediaSyncService()),
+        // PlaylistService MIGRADO para Riverpod (bridge híbrida)
+        // provider.ChangeNotifierProvider(create: (_) => PlaylistService()),
+        // MediaSyncService MIGRADO para Riverpod (bridge híbrida)
+        // provider.ChangeNotifierProvider(create: (_) => MediaSyncService()),
         
         // Serviços de conteúdo
         // VerseCollectionService MIGRADO para Riverpod
         // provider.ChangeNotifierProvider(create: (_) => VerseCollectionService()),
-        provider.ChangeNotifierProvider(create: (_) => NotesService()),
+        // NotesService MIGRADO para Riverpod (bridge híbrida)
+        // provider.ChangeNotifierProvider(create: (_) => NotesService()),
         
         // Serviços de sincronização (inicializados depois)
-        provider.ChangeNotifierProvider(
-          create: (_) => isOfflineMode ? DataSyncManager() : DataSyncManager(),
-        ),
-        provider.ChangeNotifierProvider(
-          create: (_) => isOfflineMode ? RealtimeDataService() : RealtimeDataService(),
-        ),
+        // DataSyncManager MIGRADO para Riverpod
+        // provider.ChangeNotifierProvider(
+        //   create: (_) => isOfflineMode ? DataSyncManager() : DataSyncManager(),
+        // ),
+        // RealtimeDataService MIGRADO para Riverpod
+        // provider.ChangeNotifierProvider(
+        //   create: (_) => isOfflineMode ? RealtimeDataService() : RealtimeDataService(),
+        // ),
         
         // Serviços Firebase (só se disponível)
         if (!isOfflineMode) ...[
@@ -251,21 +257,24 @@ class VerseeApp extends StatelessWidget {
         ],
         
         // Display services (inicialização tardia e segura)
-        provider.ChangeNotifierProvider<DisplayManager>(
-          create: (_) => _createDisplayManagerSafely(),
-        ),
+        // DisplayManager MIGRADO para Riverpod (bridge híbrida)
+        // provider.ChangeNotifierProvider<DisplayManager>(
+        //   create: (_) => _createDisplayManagerSafely(),
+        // ),
         
         // Dual screen service (simples)
-        provider.ChangeNotifierProvider(
-          create: (context) => _createDualScreenServiceSafely(context),
-        ),
+        // DualScreenService MIGRADO para Riverpod (bridge híbrida)
+        // provider.ChangeNotifierProvider(
+        //   create: (context) => _createDualScreenServiceSafely(context),
+        // ),
         
         // Presentation services MIGRADOS para Riverpod
         // provider.ChangeNotifierProvider(create: (_) => PresentationEngineService()),
         // provider.ChangeNotifierProvider(create: (_) => PresentationManager()),
         
         // Serviços de análise
-        provider.ChangeNotifierProvider(create: (_) => StorageAnalysisService()),
+        // StorageAnalysisService MIGRADO para Riverpod
+        // provider.ChangeNotifierProvider(create: (_) => StorageAnalysisService()),
       ],
       child: _AppWithTheme(),
     );
