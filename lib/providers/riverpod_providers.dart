@@ -13,6 +13,9 @@ import 'package:versee/services/notes_service.dart';
 import 'package:versee/services/playlist_service.dart';
 import 'package:versee/pages/storage_page.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:versee/services/firebase_manager.dart';
+import 'package:versee/firestore/firestore_data_schema.dart';
+import 'dart:convert';
 
 /// =============================================================================
 /// ARQUIVO CENTRAL DE PROVIDERS DO RIVERPOD
@@ -3100,6 +3103,772 @@ class MediaSyncNotifier extends StateNotifier<MediaSyncState> {
 /// Provider principal da sincronização de mídia
 final mediaSyncProvider = StateNotifierProvider<MediaSyncNotifier, MediaSyncState>((ref) {
   return MediaSyncNotifier();
+});
+
+// ==========================================
+// DataSyncManager - Migração Direta
+// ==========================================
+
+class DataSyncState {
+  final bool isSyncing;
+  final String? syncError;
+  final DateTime? lastSyncTime;
+  final int pendingOperations;
+
+  DataSyncState({
+    this.isSyncing = false,
+    this.syncError,
+    this.lastSyncTime,
+    this.pendingOperations = 0,
+  });
+
+  bool get hasPendingOperations => pendingOperations > 0;
+
+  DataSyncState copyWith({
+    bool? isSyncing,
+    String? syncError,
+    DateTime? lastSyncTime,
+    int? pendingOperations,
+  }) {
+    return DataSyncState(
+      isSyncing: isSyncing ?? this.isSyncing,
+      syncError: syncError ?? this.syncError,
+      lastSyncTime: lastSyncTime ?? this.lastSyncTime,
+      pendingOperations: pendingOperations ?? this.pendingOperations,
+    );
+  }
+}
+
+class DataSyncNotifier extends StateNotifier<DataSyncState> {
+  final FirebaseManager _firebase = FirebaseManager();
+  
+  static const String _syncQueueKey = 'versee_sync_queue';
+  static const String _lastSyncTimeKey = 'versee_last_sync_time';
+
+  DataSyncNotifier() : super(DataSyncState()) {
+    _loadSyncState();
+  }
+
+  Future<void> initialize() async {
+    await _loadPendingOperations();
+    
+    _firebase.authStateChanges.listen((user) {
+      if (user != null) {
+        syncPendingOperations();
+      }
+    });
+  }
+
+  Future<void> _loadSyncState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastSyncStr = prefs.getString(_lastSyncTimeKey);
+      if (lastSyncStr != null) {
+        state = state.copyWith(lastSyncTime: DateTime.parse(lastSyncStr));
+      }
+    } catch (e) {
+      debugPrint('Error loading sync state: $e');
+    }
+  }
+
+  Future<void> _saveSyncState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (state.lastSyncTime != null) {
+        await prefs.setString(_lastSyncTimeKey, state.lastSyncTime!.toIso8601String());
+      }
+    } catch (e) {
+      debugPrint('Error saving sync state: $e');
+    }
+  }
+
+  Future<void> _loadPendingOperations() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final queueJson = prefs.getString(_syncQueueKey);
+      if (queueJson != null) {
+        final queue = json.decode(queueJson) as List;
+        state = state.copyWith(pendingOperations: queue.length);
+      }
+    } catch (e) {
+      debugPrint('Error loading pending operations: $e');
+    }
+  }
+
+  Future<void> queueOperation({
+    required String type,
+    required String collection,
+    String? documentId,
+    Map<String, dynamic>? data,
+    String? tempId,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final queueJson = prefs.getString(_syncQueueKey) ?? '[]';
+      final queue = json.decode(queueJson) as List;
+
+      final operation = {
+        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'type': type,
+        'collection': collection,
+        'documentId': documentId,
+        'data': data,
+        'tempId': tempId,
+        'timestamp': DateTime.now().toIso8601String(),
+        'retryCount': 0,
+      };
+
+      queue.add(operation);
+      await prefs.setString(_syncQueueKey, json.encode(queue));
+      
+      state = state.copyWith(pendingOperations: queue.length);
+      debugPrint('Operation queued: $type $collection');
+    } catch (e) {
+      debugPrint('Error queueing operation: $e');
+    }
+  }
+
+  Future<void> syncPendingOperations() async {
+    if (state.isSyncing || !_firebase.isUserAuthenticated) return;
+
+    try {
+      state = state.copyWith(isSyncing: true, syncError: null);
+
+      final prefs = await SharedPreferences.getInstance();
+      final queueJson = prefs.getString(_syncQueueKey);
+      if (queueJson == null) return;
+
+      final queue = json.decode(queueJson) as List;
+      if (queue.isEmpty) return;
+
+      debugPrint('Syncing ${queue.length} pending operations');
+
+      final successfulOperations = <int>[];
+      
+      for (int i = 0; i < queue.length; i++) {
+        final operation = queue[i] as Map<String, dynamic>;
+        
+        try {
+          await _executeOperation(operation);
+          successfulOperations.add(i);
+          debugPrint('Operation synced: ${operation['type']} ${operation['collection']}');
+        } catch (e) {
+          debugPrint('Failed to sync operation: $e');
+          
+          operation['retryCount'] = (operation['retryCount'] ?? 0) + 1;
+          
+          if (operation['retryCount'] >= 3) {
+            successfulOperations.add(i);
+            debugPrint('Operation removed after 3 failed attempts');
+          }
+        }
+      }
+
+      for (int i = successfulOperations.length - 1; i >= 0; i--) {
+        queue.removeAt(successfulOperations[i]);
+      }
+
+      await prefs.setString(_syncQueueKey, json.encode(queue));
+      
+      state = state.copyWith(
+        pendingOperations: queue.length,
+        lastSyncTime: DateTime.now(),
+      );
+      
+      await _saveSyncState();
+      debugPrint('Sync completed. ${successfulOperations.length} operations synced, ${queue.length} remaining');
+      
+    } catch (e) {
+      state = state.copyWith(syncError: 'Erro na sincronização: $e');
+      debugPrint('Sync error: $e');
+    } finally {
+      state = state.copyWith(isSyncing: false);
+    }
+  }
+
+  Future<void> _executeOperation(Map<String, dynamic> operation) async {
+    final type = operation['type'] as String;
+    final collection = operation['collection'] as String;
+    final documentId = operation['documentId'] as String?;
+    final data = operation['data'] as Map<String, dynamic>?;
+
+    switch (type) {
+      case 'create':
+        if (data != null) {
+          data['userId'] = _firebase.currentUserId;
+          await _firebase.firestore
+              .collection(collection)
+              .add(FirestoreConverter.prepareForFirestore(data));
+        }
+        break;
+
+      case 'update':
+        if (documentId != null && data != null) {
+          data['updatedAt'] = DateTime.now();
+          await _firebase.firestore
+              .collection(collection)
+              .doc(documentId)
+              .update(FirestoreConverter.prepareForFirestore(data));
+        }
+        break;
+
+      case 'delete':
+        if (documentId != null) {
+          await _firebase.firestore
+              .collection(collection)
+              .doc(documentId)
+              .delete();
+        }
+        break;
+
+      default:
+        throw Exception('Unknown operation type: $type');
+    }
+  }
+
+  Future<String> createWithSync({
+    required String collection,
+    required Map<String, dynamic> data,
+  }) async {
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    
+    if (_firebase.isUserAuthenticated) {
+      try {
+        data['userId'] = _firebase.currentUserId;
+        final docRef = await _firebase.firestore
+            .collection(collection)
+            .add(FirestoreConverter.prepareForFirestore(data));
+        return docRef.id;
+      } catch (e) {
+        await queueOperation(
+          type: 'create',
+          collection: collection,
+          data: data,
+          tempId: tempId,
+        );
+        return tempId;
+      }
+    } else {
+      await queueOperation(
+        type: 'create',
+        collection: collection,
+        data: data,
+        tempId: tempId,
+      );
+      return tempId;
+    }
+  }
+
+  Future<bool> updateWithSync({
+    required String collection,
+    required String documentId,
+    required Map<String, dynamic> data,
+  }) async {
+    if (_firebase.isUserAuthenticated) {
+      try {
+        data['updatedAt'] = DateTime.now();
+        await _firebase.firestore
+            .collection(collection)
+            .doc(documentId)
+            .update(FirestoreConverter.prepareForFirestore(data));
+        return true;
+      } catch (e) {
+        await queueOperation(
+          type: 'update',
+          collection: collection,
+          documentId: documentId,
+          data: data,
+        );
+        return false;
+      }
+    } else {
+      await queueOperation(
+        type: 'update',
+        collection: collection,
+        documentId: documentId,
+        data: data,
+      );
+      return false;
+    }
+  }
+
+  Future<bool> deleteWithSync({
+    required String collection,
+    required String documentId,
+  }) async {
+    if (_firebase.isUserAuthenticated) {
+      try {
+        await _firebase.firestore
+            .collection(collection)
+            .doc(documentId)
+            .delete();
+        return true;
+      } catch (e) {
+        await queueOperation(
+          type: 'delete',
+          collection: collection,
+          documentId: documentId,
+        );
+        return false;
+      }
+    } else {
+      await queueOperation(
+        type: 'delete',
+        collection: collection,
+        documentId: documentId,
+      );
+      return false;
+    }
+  }
+
+  Future<void> clearPendingOperations() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_syncQueueKey);
+      state = state.copyWith(pendingOperations: 0);
+      debugPrint('All pending operations cleared');
+    } catch (e) {
+      debugPrint('Error clearing pending operations: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getPendingOperations() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final queueJson = prefs.getString(_syncQueueKey) ?? '[]';
+      final queue = json.decode(queueJson) as List;
+      return queue.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('Error getting pending operations: $e');
+      return [];
+    }
+  }
+
+  Future<void> forceSync() async {
+    await syncPendingOperations();
+  }
+
+  Future<bool> hasNetworkConnectivity() async {
+    try {
+      await _firebase.firestore.collection('_connectivity_test').limit(1).get();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  void onAppResumed() {
+    if (state.hasPendingOperations) {
+      syncPendingOperations();
+    }
+  }
+
+  void onNetworkRestored() {
+    if (state.hasPendingOperations) {
+      syncPendingOperations();
+    }
+  }
+
+  Map<String, dynamic> getSyncStatus() {
+    return {
+      'isSyncing': state.isSyncing,
+      'pendingOperations': state.pendingOperations,
+      'lastSyncTime': state.lastSyncTime?.toIso8601String(),
+      'hasError': state.syncError != null,
+      'error': state.syncError,
+    };
+  }
+
+  Future<String> exportPendingOperations() async {
+    final operations = await getPendingOperations();
+    return json.encode(operations);
+  }
+}
+
+final dataSyncProvider = StateNotifierProvider<DataSyncNotifier, DataSyncState>((ref) {
+  return DataSyncNotifier();
+});
+
+// ==========================================
+// RealtimeDataService - Migração Direta
+// ==========================================
+
+class RealtimeDataState {
+  final Map<String, List<Map<String, dynamic>>> cache;
+  final Map<String, bool> loadingStates;
+  final Map<String, String?> errorStates;
+  final String? currentUserId;
+
+  RealtimeDataState({
+    Map<String, List<Map<String, dynamic>>>? cache,
+    Map<String, bool>? loadingStates,
+    Map<String, String?>? errorStates,
+    this.currentUserId,
+  }) : cache = cache ?? {},
+        loadingStates = loadingStates ?? {},
+        errorStates = errorStates ?? {};
+
+  List<Map<String, dynamic>> getPlaylists() => cache['playlists'] ?? [];
+  
+  List<Map<String, dynamic>> getNotes({String? type}) {
+    final notes = cache['notes'] ?? [];
+    if (type == null) return notes;
+    return notes.where((note) => note['type'] == type).toList();
+  }
+  
+  List<Map<String, dynamic>> getMedia({String? type}) {
+    final media = cache['media'] ?? [];
+    if (type == null) return media;
+    return media.where((item) => item['type'] == type).toList();
+  }
+  
+  List<Map<String, dynamic>> getVerseCollections() => cache['verseCollections'] ?? [];
+
+  bool isPlaylistsLoading() => loadingStates['playlists'] ?? false;
+  bool isNotesLoading() => loadingStates['notes'] ?? false;
+  bool isMediaLoading() => loadingStates['media'] ?? false;
+  bool isVerseCollectionsLoading() => loadingStates['verseCollections'] ?? false;
+
+  String? getPlaylistsError() => errorStates['playlists'];
+  String? getNotesError() => errorStates['notes'];
+  String? getMediaError() => errorStates['media'];
+  String? getVerseCollectionsError() => errorStates['verseCollections'];
+
+  RealtimeDataState copyWith({
+    Map<String, List<Map<String, dynamic>>>? cache,
+    Map<String, bool>? loadingStates,
+    Map<String, String?>? errorStates,
+    String? currentUserId,
+  }) {
+    return RealtimeDataState(
+      cache: cache ?? this.cache,
+      loadingStates: loadingStates ?? this.loadingStates,
+      errorStates: errorStates ?? this.errorStates,
+      currentUserId: currentUserId ?? this.currentUserId,
+    );
+  }
+}
+
+class RealtimeDataNotifier extends StateNotifier<RealtimeDataState> {
+  final FirebaseManager _firebase = FirebaseManager();
+  final Map<String, StreamSubscription> _subscriptions = {};
+
+  RealtimeDataNotifier() : super(RealtimeDataState());
+
+  void startListening() {
+    final userId = _firebase.currentUserId;
+    if (userId == null) {
+      debugPrint('No user authenticated, cannot start real-time listening');
+      return;
+    }
+
+    state = state.copyWith(currentUserId: userId);
+    _startPlaylistsStream();
+    _startNotesStream();
+    _startMediaStream();
+    _startVerseCollectionsStream();
+
+    debugPrint('Real-time streams started for user: $userId');
+  }
+
+  void stopListening() {
+    for (final subscription in _subscriptions.values) {
+      subscription.cancel();
+    }
+    _subscriptions.clear();
+    
+    state = RealtimeDataState();
+    debugPrint('Real-time streams stopped');
+  }
+
+  void _startPlaylistsStream() {
+    if (state.currentUserId == null) return;
+
+    _setLoadingState('playlists', true);
+    
+    final stream = _firebase.firestore
+        .collection(FirestoreDataSchema.playlistsCollection)
+        .where('userId', isEqualTo: state.currentUserId)
+        .orderBy('updatedAt', descending: true)
+        .snapshots();
+
+    _subscriptions['playlists'] = stream.listen(
+      (snapshot) {
+        final playlists = snapshot.docs.map((doc) {
+          final data = FirestoreConverter.parseFromFirestore(doc.data());
+          data['id'] = doc.id;
+          return data;
+        }).toList();
+
+        final newCache = Map<String, List<Map<String, dynamic>>>.from(state.cache);
+        newCache['playlists'] = playlists;
+        
+        _setLoadingState('playlists', false);
+        _clearError('playlists');
+        state = state.copyWith(cache: newCache);
+      },
+      onError: (error) {
+        _setError('playlists', 'Erro ao carregar playlists: $error');
+        _setLoadingState('playlists', false);
+      },
+    );
+  }
+
+  void _startNotesStream() {
+    if (state.currentUserId == null) return;
+
+    _setLoadingState('notes', true);
+    
+    final stream = _firebase.firestore
+        .collection(FirestoreDataSchema.notesCollection)
+        .where('userId', isEqualTo: state.currentUserId)
+        .orderBy('updatedAt', descending: true)
+        .snapshots();
+
+    _subscriptions['notes'] = stream.listen(
+      (snapshot) {
+        final notes = snapshot.docs.map((doc) {
+          final data = FirestoreConverter.parseFromFirestore(doc.data());
+          data['id'] = doc.id;
+          return data;
+        }).toList();
+
+        final newCache = Map<String, List<Map<String, dynamic>>>.from(state.cache);
+        newCache['notes'] = notes;
+        
+        _setLoadingState('notes', false);
+        _clearError('notes');
+        state = state.copyWith(cache: newCache);
+      },
+      onError: (error) {
+        _setError('notes', 'Erro ao carregar notas: $error');
+        _setLoadingState('notes', false);
+      },
+    );
+  }
+
+  void _startMediaStream() {
+    if (state.currentUserId == null) return;
+
+    _setLoadingState('media', true);
+    
+    final stream = _firebase.firestore
+        .collection(FirestoreDataSchema.mediaCollection)
+        .where('userId', isEqualTo: state.currentUserId)
+        .orderBy('updatedAt', descending: true)
+        .snapshots();
+
+    _subscriptions['media'] = stream.listen(
+      (snapshot) {
+        final media = snapshot.docs.map((doc) {
+          final data = FirestoreConverter.parseFromFirestore(doc.data());
+          data['id'] = doc.id;
+          return data;
+        }).toList();
+
+        final newCache = Map<String, List<Map<String, dynamic>>>.from(state.cache);
+        newCache['media'] = media;
+        
+        _setLoadingState('media', false);
+        _clearError('media');
+        state = state.copyWith(cache: newCache);
+      },
+      onError: (error) {
+        _setError('media', 'Erro ao carregar mídia: $error');
+        _setLoadingState('media', false);
+      },
+    );
+  }
+
+  void _startVerseCollectionsStream() {
+    if (state.currentUserId == null) return;
+
+    _setLoadingState('verseCollections', true);
+    
+    final stream = _firebase.firestore
+        .collection(FirestoreDataSchema.verseCollectionsCollection)
+        .where('userId', isEqualTo: state.currentUserId)
+        .orderBy('updatedAt', descending: true)
+        .snapshots();
+
+    _subscriptions['verseCollections'] = stream.listen(
+      (snapshot) {
+        final collections = snapshot.docs.map((doc) {
+          final data = FirestoreConverter.parseFromFirestore(doc.data());
+          data['id'] = doc.id;
+          return data;
+        }).toList();
+
+        final newCache = Map<String, List<Map<String, dynamic>>>.from(state.cache);
+        newCache['verseCollections'] = collections;
+        
+        _setLoadingState('verseCollections', false);
+        _clearError('verseCollections');
+        state = state.copyWith(cache: newCache);
+      },
+      onError: (error) {
+        _setError('verseCollections', 'Erro ao carregar coleções de versículos: $error');
+        _setLoadingState('verseCollections', false);
+      },
+    );
+  }
+
+  Stream<Map<String, dynamic>?> getPlaylistStream(String playlistId) {
+    return _firebase.firestore
+        .collection(FirestoreDataSchema.playlistsCollection)
+        .doc(playlistId)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return null;
+      final data = FirestoreConverter.parseFromFirestore(doc.data()!);
+      data['id'] = doc.id;
+      return data;
+    });
+  }
+
+  Stream<Map<String, dynamic>?> getNoteStream(String noteId) {
+    return _firebase.firestore
+        .collection(FirestoreDataSchema.notesCollection)
+        .doc(noteId)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return null;
+      final data = FirestoreConverter.parseFromFirestore(doc.data()!);
+      data['id'] = doc.id;
+      return data;
+    });
+  }
+
+  Stream<Map<String, dynamic>?> getUserSettingsStream() {
+    if (state.currentUserId == null) return Stream.value(null);
+    
+    return _firebase.firestore
+        .collection(FirestoreDataSchema.settingsCollection)
+        .doc(state.currentUserId)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return null;
+      return FirestoreConverter.parseFromFirestore(doc.data()!);
+    });
+  }
+
+  void handleConnectivityChange(bool isConnected) {
+    if (isConnected) {
+      debugPrint('Connectivity restored, restarting streams');
+      stopListening();
+      startListening();
+    } else {
+      debugPrint('Connectivity lost, streams will work offline');
+    }
+  }
+
+  Map<String, int> getDataStatistics() {
+    return {
+      'playlists': state.getPlaylists().length,
+      'notes': state.getNotes().length,
+      'lyrics': state.getNotes(type: 'lyrics').length,
+      'media': state.getMedia().length,
+      'audio': state.getMedia(type: 'audio').length,
+      'video': state.getMedia(type: 'video').length,
+      'image': state.getMedia(type: 'image').length,
+      'verseCollections': state.getVerseCollections().length,
+    };
+  }
+
+  List<Map<String, dynamic>> searchAll(String query) {
+    final results = <Map<String, dynamic>>[];
+    final lowerQuery = query.toLowerCase();
+
+    for (final playlist in state.getPlaylists()) {
+      if (_matchesQuery(playlist, lowerQuery, ['title', 'description'])) {
+        results.add({...playlist, '_type': 'playlist'});
+      }
+    }
+
+    for (final note in state.getNotes()) {
+      if (_matchesQuery(note, lowerQuery, ['title'])) {
+        results.add({...note, '_type': 'note'});
+      }
+    }
+
+    for (final media in state.getMedia()) {
+      if (_matchesQuery(media, lowerQuery, ['name', 'fileName'])) {
+        results.add({...media, '_type': 'media'});
+      }
+    }
+
+    for (final collection in state.getVerseCollections()) {
+      if (_matchesQuery(collection, lowerQuery, ['title'])) {
+        results.add({...collection, '_type': 'verseCollection'});
+      }
+    }
+
+    return results;
+  }
+
+  bool _matchesQuery(Map<String, dynamic> item, String query, List<String> fields) {
+    for (final field in fields) {
+      final value = item[field]?.toString().toLowerCase();
+      if (value != null && value.contains(query)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _setLoadingState(String key, bool loading) {
+    final newLoadingStates = Map<String, bool>.from(state.loadingStates);
+    newLoadingStates[key] = loading;
+    state = state.copyWith(loadingStates: newLoadingStates);
+  }
+
+  void _setError(String key, String error) {
+    final newErrorStates = Map<String, String?>.from(state.errorStates);
+    newErrorStates[key] = error;
+    state = state.copyWith(errorStates: newErrorStates);
+  }
+
+  void _clearError(String key) {
+    final newErrorStates = Map<String, String?>.from(state.errorStates);
+    newErrorStates[key] = null;
+    state = state.copyWith(errorStates: newErrorStates);
+  }
+
+  Future<void> refreshPlaylists() async {
+    _subscriptions['playlists']?.cancel();
+    _startPlaylistsStream();
+  }
+
+  Future<void> refreshNotes() async {
+    _subscriptions['notes']?.cancel();
+    _startNotesStream();
+  }
+
+  Future<void> refreshMedia() async {
+    _subscriptions['media']?.cancel();
+    _startMediaStream();
+  }
+
+  Future<void> refreshVerseCollections() async {
+    _subscriptions['verseCollections']?.cancel();
+    _startVerseCollectionsStream();
+  }
+
+  Future<void> refreshAll() async {
+    stopListening();
+    await Future.delayed(const Duration(milliseconds: 500));
+    startListening();
+  }
+
+  @override
+  void dispose() {
+    stopListening();
+    super.dispose();
+  }
+}
+
+final realtimeDataProvider = StateNotifierProvider<RealtimeDataNotifier, RealtimeDataState>((ref) {
+  return RealtimeDataNotifier();
 });
 
 /// Providers convenientes
